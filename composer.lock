@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "003ca98607dbc08fe26568174dc013d2",
+    "content-hash": "7d8214cfb42c91a4babf2eb13fe6c467",
     "packages": [
         {
             "name": "doctrine/inflector",
@@ -2335,16 +2335,16 @@
         },
         {
             "name": "jot/hf-elastic",
-            "version": "dev-main",
+            "version": "1.1.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/JotJunior/hf-elastic.git",
-                "reference": "56cc4a610545e88e890e1699a8d3481c93948d58"
+                "reference": "d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/JotJunior/hf-elastic/zipball/56cc4a610545e88e890e1699a8d3481c93948d58",
-                "reference": "56cc4a610545e88e890e1699a8d3481c93948d58",
+                "url": "https://api.github.com/repos/JotJunior/hf-elastic/zipball/d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e",
+                "reference": "d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e",
                 "shasum": ""
             },
             "require": {
@@ -2355,7 +2355,6 @@
                 "hyperf/etcd": "~3.1.0",
                 "php": ">=8.1"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "hyperf": {
@@ -2386,9 +2385,9 @@
             ],
             "support": {
                 "issues": "https://github.com/JotJunior/hf-elastic/issues",
-                "source": "https://github.com/JotJunior/hf-elastic/tree/main"
+                "source": "https://github.com/JotJunior/hf-elastic/tree/1.1.5"
             },
-            "time": "2025-01-03T11:57:44+00:00"
+            "time": "2025-01-07T00:24:03+00:00"
         },
         {
             "name": "nikic/php-parser",
@@ -4025,9 +4024,7 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "jot/hf-elastic": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
