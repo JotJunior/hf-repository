@@ -4,40 +4,52 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
-abstract class Entity
+use Hyperf\Stringable\Str;
+use OpenApi\Attributes as OA;
+
+abstract class Entity implements EntityInterface
 {
+
+    protected ?string $id = null;
 
     public function __construct(array $data = [])
     {
-        $this->hydrate($data);
+        if (!empty($data)) {
+            $this->hydrate($data);
+        }
     }
 
     /**
-     * Populates the properties of the current object with the provided data.
+     * Populates the current entity's properties with the provided key-value pairs.
      *
-     * @param array $data An associative array where keys are property names (in snake_case)
-     *                    and values are the values to be assigned to the object's properties.
-     * @return void
+     * @param array $data An associative array where keys represent property names (in snake_case)
+     *                    and values are the corresponding values to set.
+     * @return self Returns the current instance with the updated properties.
      * @throws \ReflectionException
      */
-    public function hydrate(array $data): void
+    public function hydrate(array $data): self
     {
         foreach ($data as $key => $value) {
-            $property = $this->snakeToCamelCase($key);
+            $property = Str::camel($key);
             if ($this->propertyExistsInEntity($property)) {
                 $reflection = new \ReflectionProperty($this, $property);
-                $docComment = $reflection->getDocComment();
-                $relatedClass = $this->extractRelatedClass($docComment);
-
-                if ($relatedClass && class_exists($relatedClass)) {
-                    $this->$property = is_array($value)
-                        ? new $relatedClass($value)
-                        : $value;
+                $attributes = $reflection->getAttributes(OA\Property::class);
+                $relatedClass = null;
+                foreach ($attributes as $attribute) {
+                    $annotation = $attribute->newInstance();
+                    if (isset($annotation->x) && is_array($annotation->x)) {
+                        $relatedClass = $annotation->x['php_type'];
+                    }
+                }
+                if (!empty($relatedClass) && class_exists($relatedClass)) {
+                    $this->$property = new $relatedClass($value);
                 } else {
                     $this->$property = $value;
                 }
             }
         }
+
+        return $this;
     }
 
     /**
@@ -56,47 +68,28 @@ abstract class Entity
         foreach ($this->getAllProperties($reflection) as $property) {
             $propertyName = $property->getName();
             $property->setAccessible(true);
-            $value = $property->getValue($this);
 
-            if (is_object($value) && method_exists($value, 'toArray')) {
-                $array[$this->camelToSnakeCase($propertyName)] = $value->toArray();
-            } elseif (is_array($value)) {
-                $array[$this->camelToSnakeCase($propertyName)] = array_map(
-                    function ($item) {
-                        return is_object($item) && method_exists($item, 'toArray')
-                            ? $item->toArray()
-                            : $item;
-                    },
-                    $value
-                );
-            } else {
-                $array[$this->camelToSnakeCase($propertyName)] = $value;
+            try {
+                $value = $property->getValue($this);
+            } catch (\Throwable $e) {
+                continue;
             }
+
+            $array[Str::snake($propertyName)] = $this->extractVariables($value);
+
         }
 
         return $array;
     }
 
-    /**
-     * Converts a snake_case string to camelCase format.
-     *
-     * @param string $string The input string in snake_case format.
-     * @return string The converted string in camelCase format.
-     */
-    private function snakeToCamelCase(string $string): string
+    private function extractVariables(mixed $value): mixed
     {
-        return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $string))));
-    }
+        return match (true) {
+            is_object($value) && method_exists($value, 'toArray') => $value->toArray(),
+            $value instanceof \DateTime => $value->format(DATE_ATOM),
+            default => $value,
+        };
 
-    /**
-     * Converts a camelCase string to snake_case format.
-     *
-     * @param string $string The input string in camelCase format.
-     * @return string The converted string in snake_case format.
-     */
-    private function camelToSnakeCase(string $string): string
-    {
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $string));
     }
 
     /**
@@ -108,7 +101,7 @@ abstract class Entity
     private function extractRelatedClass(?string $docComment): ?string
     {
         if ($docComment && preg_match('/@var\s+\\\\?([\w\\\\]+)/', $docComment, $matches)) {
-            return $matches[1];
+            return explode('|', $matches[1])[0];
         }
 
         return null;
@@ -154,8 +147,9 @@ abstract class Entity
      *
      * @return self A new instance that is a clone of the current object.
      */
-    public function clone()
+    public function clone(): self
     {
         return clone $this;
     }
+
 }

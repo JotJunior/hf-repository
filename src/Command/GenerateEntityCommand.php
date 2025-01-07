@@ -6,7 +6,7 @@ namespace Jot\HfRepository\Command;
 
 use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Command\Annotation\Command;
-use Hyperf\Di\Annotation\Inject;
+use Hyperf\Stringable\Str;
 use Jot\HfElastic\ElasticsearchService;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -14,16 +14,23 @@ use Symfony\Component\Console\Input\InputOption;
 #[Command]
 class GenerateEntityCommand extends HyperfCommand
 {
-    #[Inject]
     protected ElasticsearchService $esClient;
 
-    public function __construct(protected ContainerInterface $container)
+    protected array $ignoreProperties = ['created_at', 'updated_at', 'removed'];
+
+    protected string $namespace = 'App\\Entity';
+    protected string $outputDir = BASE_PATH . '/app/Entity';
+
+    public function __construct(protected ContainerInterface $container, ElasticsearchService $esClient)
     {
         parent::__construct('jot:create-entity');
-        $this->setDescription('Elasticsearch mappings migrations command.');
+        $this->setDescription('Creating entity classes based on the elasticsearch mapping configuration.');
         $this->addOption('mapping', 'M', InputOption::VALUE_REQUIRED, 'Elasticsearch mapping name', '');
-        $this->addOption('namespace', 'N', InputOption::VALUE_REQUIRED, 'Entity namespace', '');
-        $this->addOption('force', 'F', InputOption::VALUE_OPTIONAL, 'Rewrite mapping file ', false);
+        $this->addOption('namespace', 'N', InputOption::VALUE_OPTIONAL, 'Entity namespace', 'App\\Entity');
+        $this->addOption('output-dir', 'O', InputOption::VALUE_OPTIONAL, 'Entity namespace', BASE_PATH . '/app/Entity');
+        $this->addOption('force', 'F', InputOption::VALUE_OPTIONAL, 'Rewrite mapping file', false);
+
+        $this->esClient = $esClient;
     }
 
     /**
@@ -41,14 +48,33 @@ class GenerateEntityCommand extends HyperfCommand
         }
 
         $mapping = $this->input->getOption('mapping');
-        $namespace = $this->input->getOption('namespace');
         $force = boolval($this->input->getOption('force'));
+        $mainClassName = ucfirst(Str::camel(Str::singular($mapping)));
+        $this->setOutputDir($mainClassName);
+        $this->namespace = sprintf('%s\\%s', $this->input->getOption('namespace'), $mainClassName);
 
-        $entityDirectory = BASE_PATH . '/app/Entity';
-        $this->line('Starting to generate entity...');
-        $this->generateEntityFromMapping($this->fetchMapping($mapping), $mapping, $namespace, $entityDirectory, $force);
-        $this->line('Entity generated successfully!');
+        $this->line(sprintf('Starting to generate entity %s', $mainClassName), 'info');
 
+        try {
+            $this->generateEntityFromMapping($this->fetchMapping($mapping), $mainClassName, false, $force);
+            $this->line(sprintf('[OK] %s', $mainClassName));
+        } catch (\Throwable $e) {
+            $this->line('ERROR: ' . $e->getMessage(), 'error');
+            return;
+        }
+        $this->line('Entity generated successfully!', 'info');
+
+    }
+
+    private function setOutputDir(string $entityName): string
+    {
+        $this->outputDir = sprintf('%s/%s', $this->input->getOption('output-dir'), $entityName);
+
+        if (!is_dir($this->outputDir)) {
+            mkdir($this->outputDir, 0755, true);
+        }
+
+        return $this->outputDir;
     }
 
     /**
@@ -93,47 +119,112 @@ class GenerateEntityCommand extends HyperfCommand
         };
     }
 
-    /**
-     * Generates a PHP entity class file based on the provided mapping.
-     *
-     * @param array $mapping The mapping definition containing properties and their attributes.
-     * @param string $className The name of the class to generate.
-     * @param string $namespace The namespace for the generated class.
-     * @param string $outputDir The directory where the generated class file will be stored.
-     * @param bool $force Optional. If true, overwrites existing files with the same name. Defaults to false.
-     * @return void
-     */
-    private function generateEntityFromMapping(array $mapping, string $className, string $namespace, string $outputDir, bool $force = false): void
+    private function generateEntityFromMapping(array $mapping, string $className, bool $isChild = false, bool $force = false): void
     {
         $properties = $mapping['properties'] ?? [];
-        $classContent = "<?php\n\nnamespace {$namespace};\n\n";
-        $classContent .= "class $className\n{\n";
+        $classContent = "<?php\n\nnamespace {$this->namespace};\n\n";
+        $classContent .= "use Jot\HfRepository\Entity;\n";
+        if (!$isChild) {
+            $classContent .= "use Jot\HfRepository\Trait\HasTimestamps;\n";
+            $classContent .= "use Jot\HfRepository\Trait\HasLogicRemoval;\n";
+        }
+        $classContent .= "use OpenApi\Attributes as OA;\n";
+        $classContent .= "\n";
+        $className = ucfirst(Str::singular($className));
+        $swaggerSchema = strtolower(sprintf('%s.%s', preg_replace('/\W+/', '.', $this->namespace), $className));
+
+        $classContent .= "#[OA\Schema(schema: \"$swaggerSchema\")]\n";
+        $classContent .= "class $className extends Entity\n{\n\n";
+        if (!$isChild) {
+            $classContent .= "    use HasLogicRemoval, HasTimestamps;\n\n";
+        }
 
         foreach ($properties as $field => $details) {
-            $type = $details['type'] ?? 'mixed';
+            $type = $details['type'] ?? 'object';
             $phpType = $this->mapElasticTypeToPhpType($type);
+            $fieldName = Str::snake(Str::singular($field));
 
-            if (($type === 'object' || $type === 'nested') && isset($details['properties'])) {
-                $nestedClassName = $this->snakeToCamelCase($field, true);
-                $this->generateEntityFromMapping($details, $nestedClassName, $namespace, $outputDir, $force);
-                $phpType = "\\$namespace\\$nestedClassName";
+            switch ($type) {
+                case 'object':
+                    $nestedClassName = ucfirst($fieldName);
+                    $this->generateEntityFromMapping($details, $nestedClassName, true, $force);
+                    $this->line(sprintf('[OK] %s', $nestedClassName));
+                    $phpType = "\\$this->namespace\\$nestedClassName";
+                    $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $phpType)), 1);
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
+                    $classContent .= "        x: [\"php_type\" => \"$phpType\"]\n";
+                    $classContent .= "    )]\n";
+                    break;
+                case 'nested':
+                    $nestedClassName = ucfirst($fieldName);
+                    $this->generateEntityFromMapping($details, $nestedClassName, true, $force);
+                    $phpType = 'array';
+                    $docType = "\\$this->namespace\\{$nestedClassName}[]";
+                    $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
+                    $classContent .= "        type: \"array\",\n";
+                    $classContent .= "        items: new OA\Items(ref: \"\$#/components/schemas/$docSchema\"),\n";
+                    $classContent .= "        x: [\"php_type\" => \"$docType\"]\n";
+                    $classContent .= "    )]\n";
+                    break;
+                case 'date':
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"string\",\n";
+                    $classContent .= "        format: \"string\",\n";
+                    $classContent .= "        x: [\"php_type\" => \"\\DateTime\"]\n";
+                    $classContent .= "    )]\n";
+                    break;
+                case 'bool':
+                    $phpType = 'bool';
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"boolean\",\n";
+                    $classContent .= "        example: true\n";
+                    $classContent .= "    )]\n";
+                    break;
+                case 'integer':
+                case 'long':
+                    $phpType = 'int';
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"integer\",\n";
+                    $classContent .= "        example: 5\n";
+                    $classContent .= "    )]\n";
+                    break;
+                case 'float':
+                case 'double':
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"number\",\n";
+                    $classContent .= "        format: \"float\",\n";
+                    $classContent .= "        example: 123.45\n";
+                    $classContent .= "    )]\n";
+                    break;
+                default:
+                    $classContent .= "    #[OA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"string\",\n";
+                    $classContent .= "        example: \"\"\n";
+                    $classContent .= "    )]\n";
+                    break;
             }
 
-            $property = $this->snakeToCamelCase($field);
+            $property = Str::camel($field);
 
-            $classContent .= "    /**\n";
-            $classContent .= "     * @var $phpType\n";
-            $classContent .= "     */\n";
-            $classContent .= "    private \$$property;\n\n";
+            $classContent .= "    protected ?$phpType \$$property = null;\n\n";
         }
 
-        $classContent .= "    // Add getter and setter methods as needed\n";
+        $classContent .= "\n";
+        $classContent .= "\n";
         $classContent .= "}\n";
 
-        $filePath = "$outputDir/$className.php";
-        if (file_exists($filePath) && !$force) {
-            file_put_contents($filePath, $classContent);
-        }
+        $filePath = "$this->outputDir/$className.php";
+        file_put_contents($filePath, $classContent);
     }
 
     /**

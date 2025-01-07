@@ -2,23 +2,24 @@
 
 namespace Jot\HfRepository;
 
-use Hyperf\Di\Annotation\Inject;
+use Hyperf\Stringable\Str;
 use Jot\HfElastic\ElasticsearchService;
 use Jot\HfRepository\Exception\RecordNotFoundException;
+use function Hyperf\Support\make;
 
-abstract class Repository
+abstract class Repository implements RepositoryInterface
 {
 
-    #[Inject]
     protected ElasticsearchService $esClient;
-
+    protected string $entity;
     protected string $index;
-    protected EntityInterface $entity;
+    private EntityInterface $entityObject;
 
-    public function __construct(EntityInterface $entity)
+    public function __construct(ElasticsearchService $esClient)
     {
         $this->index = $this->getIndexName();
-        $this->entity = $entity;
+        $this->entityObject = make($this->entity, []);
+        $this->esClient = $esClient;
     }
 
     /**
@@ -29,7 +30,8 @@ abstract class Repository
     private function getIndexName(): string
     {
         $className = explode('\\', get_class($this));
-        return $this->camelToSnakeCase(end($className));
+        $indexName = Str::plural(end($className));
+        return Str::snake($indexName);
     }
 
     /**
@@ -40,8 +42,8 @@ abstract class Repository
      */
     public function find(string $id): EntityInterface
     {
-        $this->entity->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
-        return $this->entity;
+        $this->entityObject->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
+        return $this->entityObject;
     }
 
     /**
@@ -54,11 +56,11 @@ abstract class Repository
      */
     public function findOrFail(string $id): EntityInterface
     {
-        $this->entity->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
-        if (empty($this->entity->getId())) {
+        $this->entityObject->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
+        if (empty($this->entityObject->getId())) {
             throw new RecordNotFoundException();
         }
-        return $this->entity;
+        return $this->entityObject;
     }
 
     /**
@@ -70,8 +72,8 @@ abstract class Repository
     public function first(array $query): EntityInterface
     {
         $result = $this->esClient->search($query, $this->index);
-        $this->entity->hydrate($result['hits']['hits'][0]['_source']);
-        return $this->entity;
+        $this->entityObject->hydrate($result['hits']['hits'][0]['_source']);
+        return $this->entityObject;
     }
 
     /**
@@ -89,7 +91,7 @@ abstract class Repository
         while ($result['hits']['hits'] ?? false) {
             $scrollId = $result['_scroll_id'];
             foreach ($result['hits']['hits'] as $item) {
-                $entity = $this->entity->clone();
+                $entity = $this->entityObject->clone();
                 $entity->hydrate($item['_source']);
                 $results[] = $entity;
             }
@@ -104,13 +106,25 @@ abstract class Repository
         ];
     }
 
+    /**
+     * Paginates the search results from the Elasticsearch index based on the provided query, page, and per-page values.
+     *
+     * @param array $query The search query to execute against the Elasticsearch index.
+     * @param int $page The current page number to retrieve. Defaults to 1.
+     * @param int $perPage The number of results to retrieve per page. Defaults to 10.
+     * @return array An array containing the paginated results, current page, results per page, and total results count.
+     */
     public function paginate(array $query, int $page = 1, int $perPage = 10): array
     {
-        $query['body']['from'] = ($page - 1) * $perPage;
-        $query['body']['size'] = $perPage;
+        $query['from'] = ($page - 1) * $perPage;
+        $query['size'] = $perPage;
+        if (empty($query['body']['query'])) {
+            $query['body']['query'] = ['match_all' => new \stdClass()];
+        }
         $result = $this->esClient->search($query, $this->index);
+
         return [
-            'results' => array_map(fn($item) => $this->entity->clone()->hydrate($item['_source']), $result['hits']['hits']),
+            'results' => array_map(fn($item) => $this->entityObject->hydrate($item['_source'])->toArray(), $result['hits']['hits']),
             'current_page' => $page,
             'per_page' => $perPage,
             'total' => $result['hits']['total']['value']
@@ -118,14 +132,40 @@ abstract class Repository
     }
 
     /**
-     * Converts a camelCase string to snake_case format.
+     * Creates a new record in the Elasticsearch index using the provided entity and assigns it a unique identifier.
      *
-     * @param string $string The camelCase string to be converted.
-     * @return string The converted string in snake_case format.
+     * @param EntityInterface $entity The entity to be created and inserted into the Elasticsearch index.
+     * @return EntityInterface The created entity with its unique identifier assigned.
      */
-    private function camelToSnakeCase(string $string): string
+    public function create(EntityInterface $entity): EntityInterface
     {
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $string));
+        $id = Str::uuid();
+        $entity->setId($id);
+        $this->esClient->insert($entity->toArray(), $id);
+        return $this->find($id);
+    }
+
+    /**
+     * Updates an existing entity in the Elasticsearch index and retrieves the updated entity.
+     *
+     * @param EntityInterface $entity The entity to update, including its data and identifier.
+     * @return EntityInterface The updated entity retrieved from the Elasticsearch index.
+     */
+    public function update(EntityInterface $entity): EntityInterface
+    {
+        $this->esClient->update($entity->toArray(), $entity->getId());
+        return $this->find($entity->getId());
+    }
+
+    /**
+     * Deletes a record identified by the given ID from the Elasticsearch index.
+     *
+     * @param string $id The unique identifier of the record to be deleted.
+     * @return bool True if the record was successfully deleted, false otherwise.
+     */
+    public function delete(string $id): bool
+    {
+        return 'deleted' === $this->esClient->delete($id, $this->index);
     }
 
 

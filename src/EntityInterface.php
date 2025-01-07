@@ -5,11 +5,10 @@ namespace Jot\HfRepository;
 interface EntityInterface
 {
 
-    public function hydrate(array $data): void;
+    public function hydrate(array $data): self;
 
-    public function toArray(array $data): array;
-
-    public function getId(): ?string;
+    public function toArray(): array;
 
     public function clone(): self;
+
 }
