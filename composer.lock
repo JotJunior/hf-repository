@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "29bd104529a5e20498aa8511508970be",
+    "content-hash": "2f42bf6ec051a0c2734f2a605762705d",
     "packages": [
         {
             "name": "composer/package-versions-deprecated",
@@ -2674,16 +2674,16 @@
         },
         {
             "name": "jot/hf-elastic",
-            "version": "1.1.5",
+            "version": "0.9.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/JotJunior/hf-elastic.git",
-                "reference": "d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e"
+                "reference": "64283418a07e5a678e380b4794c2dd0cd3936ddd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/JotJunior/hf-elastic/zipball/d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e",
-                "reference": "d4a9be9c536c8bdd630e1ab760a8accb3d79bd4e",
+                "url": "https://api.github.com/repos/JotJunior/hf-elastic/zipball/64283418a07e5a678e380b4794c2dd0cd3936ddd",
+                "reference": "64283418a07e5a678e380b4794c2dd0cd3936ddd",
                 "shasum": ""
             },
             "require": {
@@ -2714,9 +2714,8 @@
                     "name": "Joao Zanon"
                 }
             ],
-            "description": "Elasticsearch service using etcd credentials",
+            "description": "Elasticsearch service and migrations using etcd credentials for connection.",
             "keywords": [
-                "dev",
                 "elasticsearch",
                 "etcd",
                 "hyperf",
@@ -2724,9 +2723,9 @@
             ],
             "support": {
                 "issues": "https://github.com/JotJunior/hf-elastic/issues",
-                "source": "https://github.com/JotJunior/hf-elastic/tree/1.1.5"
+                "source": "https://github.com/JotJunior/hf-elastic/tree/0.9.1"
             },
-            "time": "2025-01-07T00:24:03+00:00"
+            "time": "2025-01-07T22:01:07+00:00"
         },
         {
             "name": "kcs/class-finder",
