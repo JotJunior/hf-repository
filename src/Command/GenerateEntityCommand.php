@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Command;
 
-use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Command\Annotation\Command;
+use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\ElasticsearchService;
 use Psr\Container\ContainerInterface;
@@ -15,8 +15,6 @@ use Symfony\Component\Console\Input\InputOption;
 class GenerateEntityCommand extends HyperfCommand
 {
     protected ElasticsearchService $esClient;
-
-    protected array $ignoreProperties = ['created_at', 'updated_at', 'removed'];
 
     protected string $namespace = 'App\\Entity';
     protected string $outputDir = BASE_PATH . '/app/Entity';
@@ -57,16 +55,16 @@ class GenerateEntityCommand extends HyperfCommand
 
         try {
             $this->generateEntityFromMapping($this->fetchMapping($mapping), $mainClassName, false, $force);
-            $this->line(sprintf('[OK] %s', $mainClassName));
+            $this->line(sprintf('<fg=green>[OK]</> %s', $mainClassName));
         } catch (\Throwable $e) {
             $this->line('ERROR: ' . $e->getMessage(), 'error');
             return;
         }
-        $this->line('Entity generated successfully!', 'info');
+        $this->line(sprintf('<fg=green>[OK]</> Entity <fg=yellow>%s</> generated successfully!', $mainClassName));
 
     }
 
-    private function setOutputDir(string $entityName): string
+    private function setOutputDir(string $entityName): self
     {
         $this->outputDir = sprintf('%s/%s', $this->input->getOption('output-dir'), $entityName);
 
@@ -74,7 +72,7 @@ class GenerateEntityCommand extends HyperfCommand
             mkdir($this->outputDir, 0755, true);
         }
 
-        return $this->outputDir;
+        return $this;
     }
 
     /**
@@ -89,7 +87,7 @@ class GenerateEntityCommand extends HyperfCommand
             $response = $this->esClient->es()->indices()->getMapping(['index' => $indexName]);
             return $response[$indexName]['mappings'] ?? null;
         } catch (\Exception $e) {
-            $this->line('ERROR: ' . $e->getMessage());
+            $this->line('<fg=red>[ERROR]</> ' . $e->getMessage());
             return null;
         }
     }
@@ -103,15 +101,10 @@ class GenerateEntityCommand extends HyperfCommand
     private function mapElasticTypeToPhpType($elasticType): string
     {
         return match ($elasticType) {
-            'text' => 'string',
-            'keyword' => 'string',
+            'keyword', 'text' => 'string',
             'date' => '\DateTime',
-            'long' => 'int',
-            'integer' => 'int',
-            'short' => 'int',
-            'byte' => 'int',
-            'double' => 'float',
-            'float' => 'float',
+            'long', 'integer', 'short', 'byte' => 'int',
+            'double', 'float' => 'float',
             'boolean' => 'bool',
             'nested' => 'array',
             'object' => 'object',
@@ -129,26 +122,30 @@ class GenerateEntityCommand extends HyperfCommand
             $classContent .= "use Jot\HfRepository\Trait\HasLogicRemoval;\n";
         }
         $classContent .= "use OpenApi\Attributes as OA;\n";
+        $classContent .= "use TheCodingMachine\GraphQLite\Annotations\Field;\n";
+        $classContent .= "use TheCodingMachine\GraphQLite\Annotations\Type;\n";
+
         $classContent .= "\n";
-        $className = ucfirst(Str::singular($className));
         $swaggerSchema = strtolower(sprintf('%s.%s', preg_replace('/\W+/', '.', $this->namespace), $className));
 
+        $classContent .= "#[Type]\n";
         $classContent .= "#[OA\Schema(schema: \"$swaggerSchema\")]\n";
         $classContent .= "class $className extends Entity\n{\n\n";
         if (!$isChild) {
             $classContent .= "    use HasLogicRemoval, HasTimestamps;\n\n";
         }
 
+        $getters = "\n";
         foreach ($properties as $field => $details) {
             $type = $details['type'] ?? 'object';
             $phpType = $this->mapElasticTypeToPhpType($type);
-            $fieldName = Str::snake(Str::singular($field));
+            $fieldName = Str::singular($field);
 
             switch ($type) {
                 case 'object':
-                    $nestedClassName = ucfirst($fieldName);
+                    $nestedClassName = ucfirst(Str::camel($fieldName));
                     $this->generateEntityFromMapping($details, $nestedClassName, true, $force);
-                    $this->line(sprintf('[OK] %s', $nestedClassName));
+                    $this->line(sprintf('<fg=green>[OK]</> %s', $nestedClassName));
                     $phpType = "\\$this->namespace\\$nestedClassName";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $phpType)), 1);
                     $classContent .= "    #[OA\Property(\n";
@@ -158,8 +155,9 @@ class GenerateEntityCommand extends HyperfCommand
                     $classContent .= "    )]\n";
                     break;
                 case 'nested':
-                    $nestedClassName = ucfirst($fieldName);
+                    $nestedClassName = ucfirst(Str::camel($fieldName));
                     $this->generateEntityFromMapping($details, $nestedClassName, true, $force);
+                    $this->line(sprintf('<fg=green>[OK]</> %s', $nestedClassName));
                     $phpType = 'array';
                     $docType = "\\$this->namespace\\{$nestedClassName}[]";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
@@ -217,10 +215,16 @@ class GenerateEntityCommand extends HyperfCommand
             $property = Str::camel($field);
 
             $classContent .= "    protected ?$phpType \$$property = null;\n\n";
+
+            $methodName = sprintf('get%s()', ucfirst($property));
+            $getters .= "    #[Field]\n";
+            $getters .= "    public function $methodName: ?$phpType { return \$this->$property; }\n\n";
+
         }
 
-        $classContent .= "\n";
-        $classContent .= "\n";
+        $classContent .= $getters;
+
+        $classContent .= "\n\n";
         $classContent .= "}\n";
 
         $filePath = "$this->outputDir/$className.php";
