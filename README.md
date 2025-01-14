@@ -70,7 +70,9 @@ documentação do swagger e aplicar um rate limit padrão de 10 requisições po
 
 ```shell
 php bin/hyperf.php repo:crud --index=orders
+````
 
+```diff
 You are about to create a CRUD for index orders with api version v1.
 The elasticsearch index related entities, repository and controller will be created during this process.
 
@@ -79,19 +81,19 @@ Are you sure you want to create a CRUD for index orders? [Y/n] [Y]:
 Creating the CRUD for index orders...
 
 Start creating entities...
-[OK] ./app/Entity/Order/Customer.php
-[OK] ./app/Entity/Order/Invoice.php
-[OK] ./app/Entity/Order/Item.php
-[OK] ./app/Entity/Order/OrderHistory.php
-[OK] ./app/Entity/Order/Payment.php
-[OK] ./app/Entity/Order/Shipment.php
-[OK] ./app/Entity/Order/Order.php
++ [OK] ./app/Entity/Order/Customer.php
++ [OK] ./app/Entity/Order/Invoice.php
++ [OK] ./app/Entity/Order/Item.php
++ [OK] ./app/Entity/Order/OrderHistory.php
++ [OK] ./app/Entity/Order/Payment.php
++ [OK] ./app/Entity/Order/Shipment.php
++ [OK] ./app/Entity/Order/Order.php
 
 Start creating repository...
-[OK] ./app/Repository/OrderRepository.php
++ [OK] ./app/Repository/OrderRepository.php
 
 Start creating controller...
-[OK] ./app/Controller/V1/OrderController.php
++ [OK] ./app/Controller/V1/OrderController.php
 ```
 
 Os detalhes de cada classe gerada por este comando serão explicadas no próximo tópico.
@@ -106,14 +108,15 @@ Utilize o comando de console ```repo:entity``` para gerar as entidades relaciona
 
 ```shell
 php bin/hyperf.php repo:entity --index=orders
-
-[OK] ./app/Entity/Order/Customer.php
-[OK] ./app/Entity/Order/Invoice.php
-[OK] ./app/Entity/Order/Item.php
-[OK] ./app/Entity/Order/OrderHistory.php
-[OK] ./app/Entity/Order/Payment.php
-[OK] ./app/Entity/Order/Shipment.php
-[OK] ./app/Entity/Order/Order.php
+```
+```
++ [OK] ./app/Entity/Order/Customer.php
++ [OK] ./app/Entity/Order/Invoice.php
++ [OK] ./app/Entity/Order/Item.php
++ [OK] ./app/Entity/Order/OrderHistory.php
++ [OK] ./app/Entity/Order/Payment.php
++ [OK] ./app/Entity/Order/Shipment.php
++ [OK] ./app/Entity/Order/Order.php
 ```
 
 Conforme demonstrado, o comando vai analisar o mapping do índice informado e vai criar a entidade principal do índice e
@@ -182,8 +185,9 @@ Para criar o repositório relacionado ao índice do elasticsearch, utilize o com
 
 ```shell
 php bin/hyperf.php repo:repository --index=orders
-
-[OK] ./app/Repository/OrderRepository.php
+```
+```diff 
++ [OK] ./app/Repository/OrderRepository.php
 ```
 
 O comando criará dentro do diretório ```app/Repository``` uma classe User com o seguinte conteúdo:
@@ -210,8 +214,9 @@ PUT, DELETE e HEAD com as consultas e persistências realizadas pelo repositóri
 
 ```shell
 php bin/hyperf.php repo:controller --index=orders
-
-[OK] ./app/Controller/V1/OrderController.php
+```
+```diff
++ [OK] ./app/Controller/V1/OrderController.php
 ```
 
 Repare que o diretório final do controlador é baseada em uma versão. É possível definir a versão da api acrescentando a
@@ -225,7 +230,8 @@ Caso o arquivo do controlador exista, o comando perguntará se deseja substituí
 
 ```shell
 php bin/hyperf.php repo:controller --index=orders
-
+```
+```
 The file ./app/Controller/V1/OrderController.php already exists. Overwrite file? [y/n/a] [n]:
 ```
 
