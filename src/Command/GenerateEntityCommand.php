@@ -19,8 +19,6 @@ class GenerateEntityCommand extends HyperfCommand
 
     protected string $namespace = 'App\\Entity';
     protected string $outputDir = BASE_PATH . '/app/Entity';
-    protected bool $withSwagger = false;
-    protected bool $withGraphql = false;
     protected bool $force = false;
     protected array $ignoredFields = ['@timestamp', '@version'];
     protected array $readOnlyFields = ['created_at', 'updated_at', 'deleted', 'removed', '@version', '@timestamp'];
@@ -50,12 +48,6 @@ class GenerateEntityCommand extends HyperfCommand
         if (!defined('BASE_PATH')) {
             define('BASE_PATH', \dirname(__DIR__, 4));
         }
-
-        $swagger = $this->ask('Enable Swagger annotations? [y/n]', 'y');
-        $this->withSwagger = $swagger === 'y';
-
-        $graphql = $this->ask('Enable GraphQL annotations? [y/n]', 'y');
-        $this->withGraphql = $graphql === 'y';
 
         $this->force = boolval($this->input->getOption('force'));
 
@@ -134,21 +126,17 @@ class GenerateEntityCommand extends HyperfCommand
         $classContent .= "use Jot\HfRepository\Entity;\n";
         $classContent .= $isChild ? "" : "use Jot\HfRepository\Trait\HasTimestamps;\n";
         $classContent .= $isChild ? "" : "use Jot\HfRepository\Trait\HasLogicRemoval;\n";
-        $classContent .= $this->withSwagger ? "use Hyperf\Swagger\Annotation as SA;\n" : "";
-        $classContent .= $this->withGraphql ? "use TheCodingMachine\GraphQLite\Annotations\Field;\n" : "";
-        $classContent .= $this->withGraphql ? "use TheCodingMachine\GraphQLite\Annotations\Type;\n" : "";
+        $classContent .= "use Hyperf\Swagger\Annotation as SA;\n";
 
         $classContent .= "\n";
         $swaggerSchema = strtolower(sprintf('%s.%s', preg_replace('/\W+/', '.', $this->namespace), $className));
 
-        $classContent .= $this->withGraphql ? "#[Type]\n" : "";
-        $classContent .= $this->withSwagger ? "#[SA\Schema(schema: \"$swaggerSchema\")]\n" : "";
+        $classContent .= "#[SA\Schema(schema: \"$swaggerSchema\")]\n";
         $classContent .= "class $className extends Entity\n{\n\n";
         if (!$isChild) {
             $classContent .= "    use HasLogicRemoval, HasTimestamps;\n\n";
         }
 
-        $getters = "\n";
         foreach ($properties as $field => $details) {
             if (in_array($field, $this->ignoredFields)) {
                 continue;
@@ -163,13 +151,11 @@ class GenerateEntityCommand extends HyperfCommand
                     $this->generateEntityFromMapping($details, $nestedClassName, true);
                     $phpType = "\\$this->namespace\\$nestedClassName";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $phpType)), 1);
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
-                        $classContent .= "        x: [\"php_type\" => \"$phpType\"]\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
+                    $classContent .= "        x: [\"php_type\" => \"$phpType\"]\n";
+                    $classContent .= "    )]\n";
                     break;
                 case 'nested':
                     $nestedClassName = ucfirst(Str::camel($fieldName));
@@ -177,69 +163,57 @@ class GenerateEntityCommand extends HyperfCommand
                     $phpType = 'array';
                     $docType = "\\$this->namespace\\{$nestedClassName}[]";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
-                        $classContent .= "        type: \"array\",\n";
-                        $classContent .= "        items: new SA\Items(ref: \"\$#/components/schemas/$docSchema\"),\n";
-                        $classContent .= "        x: [\"php_type\" => \"$docType\"]\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        ref: \"#/components/schemas/$docSchema\",\n";
+                    $classContent .= "        type: \"array\",\n";
+                    $classContent .= "        items: new SA\Items(ref: \"\$#/components/schemas/$docSchema\"),\n";
+                    $classContent .= "        x: [\"php_type\" => \"$docType\"]\n";
+                    $classContent .= "    )]\n";
                     break;
                 case 'date':
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        type: \"string\",\n";
-                        $classContent .= "        format: \"string\",\n";
-                        $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        readOnly: true,\n" : "";
-                        $classContent .= "        x: [\"php_type\" => \"\\DateTime\"]\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"string\",\n";
+                    $classContent .= "        format: \"string\",\n";
+                    $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        readOnly: true,\n" : "";
+                    $classContent .= "        x: [\"php_type\" => \"\\DateTime\"]\n";
+                    $classContent .= "    )]\n";
                     break;
                 case 'bool':
                 case 'boolean':
                     $phpType = 'bool';
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        type: \"boolean\",\n";
-                        $classContent .= "        example: true\n";
-                        $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        ,readOnly: true,\n" : "";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"boolean\",\n";
+                    $classContent .= "        example: true\n";
+                    $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        ,readOnly: true,\n" : "";
+                    $classContent .= "    )]\n";
                     break;
                 case 'integer':
                 case 'long':
                     $phpType = 'int';
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        type: \"integer\",\n";
-                        $classContent .= "        example: 5\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"integer\",\n";
+                    $classContent .= "        example: 5\n";
+                    $classContent .= "    )]\n";
                     break;
                 case 'float':
                 case 'double':
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        type: \"number\",\n";
-                        $classContent .= "        format: \"float\",\n";
-                        $classContent .= "        example: 123.45\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"number\",\n";
+                    $classContent .= "        format: \"float\",\n";
+                    $classContent .= "        example: 123.45\n";
+                    $classContent .= "    )]\n";
                     break;
                 default:
-                    if ($this->withSwagger) {
-                        $classContent .= "    #[SA\Property(\n";
-                        $classContent .= "        property: \"$fieldName\",\n";
-                        $classContent .= "        type: \"string\",\n";
-                        $classContent .= "        example: \"\"\n";
-                        $classContent .= "    )]\n";
-                    }
+                    $classContent .= "    #[SA\Property(\n";
+                    $classContent .= "        property: \"$fieldName\",\n";
+                    $classContent .= "        type: \"string\",\n";
+                    $classContent .= "        example: \"\"\n";
+                    $classContent .= "    )]\n";
                     break;
             }
 
@@ -247,15 +221,7 @@ class GenerateEntityCommand extends HyperfCommand
 
             $classContent .= "    protected ?$phpType \$$property = null;\n\n";
 
-            $methodName = sprintf('get%s()', ucfirst($property));
-            if ($this->withGraphql) {
-                $getters .= "    #[Field]\n";
-                $getters .= "    public function $methodName: ?$phpType { return \$this->$property; }\n\n";
-            }
-
         }
-
-        $classContent .= $getters;
 
         $classContent .= "\n\n";
         $classContent .= "}\n";

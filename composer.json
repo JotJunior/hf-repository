@@ -35,10 +35,8 @@
     "php": ">=8.1",
     "hyperf/command": "~3.1.0",
     "hyperf/di": "~3.1.0",
-    "hyperf/graphql": "^3.1",
     "hyperf/swagger": "^3.1",
     "jot/hf-elastic": "^0.12",
-    "zircote/swagger-php": "^4.11",
-    "thecodingmachine/graphqlite": "^7.0"
+    "zircote/swagger-php": "^4.11"
   }
 }
