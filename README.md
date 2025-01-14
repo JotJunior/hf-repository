@@ -109,7 +109,7 @@ Utilize o comando de console ```repo:entity``` para gerar as entidades relaciona
 ```shell
 php bin/hyperf.php repo:entity --index=orders
 ```
-```
+```diff
 + [OK] ./app/Entity/Order/Customer.php
 + [OK] ./app/Entity/Order/Invoice.php
 + [OK] ./app/Entity/Order/Item.php
@@ -631,5 +631,3 @@ class OrderController extends AbstractController
     }
 }
 ```
-
-
