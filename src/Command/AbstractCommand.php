@@ -51,12 +51,8 @@ class AbstractCommand extends HyperfCommand
 
         $controllerFile = sprintf('%s/%sController.php', $controllerDirectory, $className);
 
-        if (file_exists($controllerFile) && !$this->force) {
-            $this->line(sprintf('<fg=yellow>[SKIP]</> Controller class already exists at %s', $controllerFile));
-            return;
-        }
-        file_put_contents($controllerFile, $template);
-        $this->line(sprintf('<fg=green>[OK]</> Controller class created at %s', $controllerFile));
+        $this->generateFile($controllerFile, $template);
+
     }
 
     /**
