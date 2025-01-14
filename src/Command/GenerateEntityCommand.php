@@ -21,7 +21,7 @@ class GenerateEntityCommand extends HyperfCommand
     protected string $outputDir = BASE_PATH . '/app/Entity';
     protected bool $force = false;
     protected array $ignoredFields = ['@timestamp', '@version'];
-    protected array $readOnlyFields = ['created_at', 'updated_at', 'deleted', 'removed', '@version', '@timestamp'];
+    protected array $readOnlyFields = ['id', 'created_at', 'updated_at', 'deleted', 'removed', '@version', '@timestamp'];
 
 
     public function __construct(protected ContainerInterface $container)
@@ -186,8 +186,8 @@ class GenerateEntityCommand extends HyperfCommand
                     $classContent .= "    #[SA\Property(\n";
                     $classContent .= "        property: \"$fieldName\",\n";
                     $classContent .= "        type: \"boolean\",\n";
+                    $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        readOnly: true,\n" : "";
                     $classContent .= "        example: true\n";
-                    $classContent .= in_array($fieldName, $this->readOnlyFields) ? "        ,readOnly: true,\n" : "";
                     $classContent .= "    )]\n";
                     break;
                 case 'integer':
