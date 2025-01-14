@@ -19,7 +19,7 @@ class GenerateControllerCommand extends HyperfCommand
         $this->setDescription('Create a repository based controller class based on an elasticsearch index.');
         $this->addUsage('repo:controller --index=index_name');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('api-version', 'V', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
+        $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
         $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
     }
 
