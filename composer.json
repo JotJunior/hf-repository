@@ -1,6 +1,5 @@
 {
   "name": "jot/hf-repository",
-  "version": "0.9.0",
   "description": "Projects related entities and repositories for elasticsearch mappings",
   "type": "library",
   "license": "MIT",
