@@ -11,4 +11,6 @@ interface EntityInterface
 
     public function clone(): self;
 
+    public function getId(): ?string;
+
 }

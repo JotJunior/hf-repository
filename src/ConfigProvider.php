@@ -2,6 +2,8 @@
 
 namespace Jot\HfRepository;
 
+use Jot\HfRepository\Command\GenerateControllerCommand;
+use Jot\HfRepository\Command\GenerateRepositoryCommand;
 use Jot\HfRepository\Command\GenerateEntityCommand;
 
 class ConfigProvider
@@ -11,7 +13,9 @@ class ConfigProvider
         return [
             'dependencies' => [],
             'commands' => [
-                GenerateEntityCommand::class
+                GenerateControllerCommand::class,
+                GenerateEntityCommand::class,
+                GenerateRepositoryCommand::class,
             ],
             'listeners' => [],
             'publish' => [],

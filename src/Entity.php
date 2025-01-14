@@ -20,6 +20,16 @@ abstract class Entity implements EntityInterface
     }
 
     /**
+     * Retrieves the ID of the current entity.
+     *
+     * @return string|null The ID of the entity, or null if not set.
+     */
+    public function getId(): ?string
+    {
+        return $this->id;
+    }
+
+    /**
      * Populates the current entity's properties with the provided key-value pairs.
      *
      * @param array $data An associative array where keys represent property names (in snake_case)
@@ -79,7 +89,7 @@ abstract class Entity implements EntityInterface
 
         }
 
-        return $array;
+        return array_filter($array);
     }
 
     private function extractVariables(mixed $value): mixed

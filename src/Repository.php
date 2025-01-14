@@ -3,23 +3,23 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use Jot\HfElastic\ElasticsearchService;
-use Jot\HfRepository\Exception\RecordNotFoundException;
-use function Hyperf\Support\make;
+use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Exception\RepositoryCreateException;
+use Jot\HfRepository\Exception\RepositoryUpdateException;
+use Psr\Container\ContainerInterface;
+
 
 abstract class Repository implements RepositoryInterface
 {
 
-    protected ElasticsearchService $esClient;
     protected string $entity;
     protected string $index;
-    private EntityInterface $entityObject;
+    protected QueryBuilder $queryBuilder;
 
-    public function __construct(ElasticsearchService $esClient)
+    public function __construct(ContainerInterface $container)
     {
         $this->index = $this->getIndexName();
-        $this->entityObject = make($this->entity, []);
-        $this->esClient = $esClient;
+        $this->queryBuilder = $container->get(QueryBuilder::class);
     }
 
     /**
@@ -30,131 +30,132 @@ abstract class Repository implements RepositoryInterface
     private function getIndexName(): string
     {
         $className = explode('\\', get_class($this));
-        $indexName = Str::plural(end($className));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
         return Str::snake($indexName);
     }
 
-    /**
-     * Retrieves and hydrates an entity using the provided identifier.
-     *
-     * @param string $id The unique identifier of the entity to retrieve.
-     * @return EntityInterface The hydrated entity instance.
-     */
-    public function find(string $id): EntityInterface
-    {
-        $this->entityObject->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
-        return $this->entityObject;
-    }
 
     /**
-     * Retrieves and hydrates an entity using the provided identifier.
-     * Throws an exception if the entity cannot be found.
+     * Finds and retrieves an entity by its ID.
      *
-     * @param string $id The unique identifier of the entity to retrieve.
-     * @return EntityInterface The hydrated entity instance.
-     * @throws RecordNotFoundException If the entity with the given identifier does not exist.
+     * @param string $id The unique identifier of the entity.
+     * @return null|EntityInterface|null The hydrated entity if found, or null if not found or an error occurs.
      */
-    public function findOrFail(string $id): EntityInterface
+    public function find(string $id): ?EntityInterface
     {
-        $this->entityObject->hydrate($this->esClient->get($id, $this->index)['_source'] ?? []);
-        if (empty($this->entityObject->getId())) {
-            throw new RecordNotFoundException();
+        $result = $this->queryBuilder
+            ->select()
+            ->from($this->index)
+            ->where('id', '=', $id)
+            ->execute();
+
+        if ($result['result'] !== 'success' || empty($result['data'][0])) {
+            return null;
         }
-        return $this->entityObject;
+
+        return new $this->entity($result['data'][0] ?? []);
     }
 
     /**
-     * Retrieves and hydrates the first entity found based on the provided query.
+     * Retrieves and hydrates the first entity matching the provided parameters.
      *
-     * @param array $query The query parameters used to search for the entity.
-     * @return EntityInterface The hydrated entity instance.
+     * @param array $params An associative array of query parameters used to filter the entities.
+     * @return null|EntityInterface The hydrated entity instance corresponding to the first match.
      */
-    public function first(array $query): EntityInterface
+    public function first(array $params): ?EntityInterface
     {
-        $result = $this->esClient->search($query, $this->index);
-        $this->entityObject->hydrate($result['hits']['hits'][0]['_source']);
-        return $this->entityObject;
-    }
+        $result = $this->parseQuery($params)
+            ->limit(1)
+            ->execute();
 
-    /**
-     * Retrieves all records matching the given query from the Elasticsearch index and hydrates them into entities.
-     *
-     * @param array $query The search query to execute against the Elasticsearch index.
-     * @return array An array of hydrated entities matching the search query.
-     */
-    public function all(array $query): array
-    {
-        $query['body']['size'] = 1000;
-        $query['scroll'] = '5m';
-        $result = $this->esClient->search($query, $this->index);
-        $results = [];
-        while ($result['hits']['hits'] ?? false) {
-            $scrollId = $result['_scroll_id'];
-            foreach ($result['hits']['hits'] as $item) {
-                $entity = $this->entityObject->clone();
-                $entity->hydrate($item['_source']);
-                $results[] = $entity;
-            }
-            $result = $this->esClient->es()->scroll([
-                'scroll_id' => $scrollId,
-                'scroll' => '5m',
-            ]);
+        if ($result['result'] !== 'success' || empty($result['data'][0])) {
+            return null;
         }
+
+        return new $this->entity($result['data'][0] ?? []);
+    }
+
+
+    /**
+     * Executes a search query based on the provided parameters and maps the results
+     * to instances of the specified entity.
+     *
+     * @param array $params An associative array containing the parameters for the search query.
+     * @return array An array of entity instances resulting from the query execution.
+     */
+    public function search(array $params): array
+    {
+        $query = $this->parseQuery($params);
+        $result = $query->execute();
+        return array_map(fn($item) => new $this->entity($item), $result['data'] ?? []);
+    }
+
+    /**
+     * Paginates a dataset based on the provided parameters.
+     *
+     * @param array $params The parameters used to filter or query the dataset.
+     * @param int $page The current page number (default is 1).
+     * @param int $perPage The number of items to display per page (default is 10).
+     * @return array An array containing the paginated results, current page, items per page, and total count.
+     */
+    public function paginate(array $params, int $page = 1, int $perPage = 10): array
+    {
+        $page = $params['_page'] ?? $page;
+        $perPage = $params['_per_page'] ?? $perPage;
+        $result = $this->parseQuery($params)
+            ->limit($perPage)
+            ->offset(($page - 1) * $perPage)
+            ->execute();
+
         return [
-            'results' => $results,
-            'total' => $result['hits']['total']['value']
+            ...$result,
+            'current_page' => (int)$page,
+            'per_page' => (int)$perPage,
+            'total' => $this->parseQuery($params)->count()
         ];
     }
 
-    /**
-     * Paginates the search results from the Elasticsearch index based on the provided query, page, and per-page values.
-     *
-     * @param array $query The search query to execute against the Elasticsearch index.
-     * @param int $page The current page number to retrieve. Defaults to 1.
-     * @param int $perPage The number of results to retrieve per page. Defaults to 10.
-     * @return array An array containing the paginated results, current page, results per page, and total results count.
-     */
-    public function paginate(array $query, int $page = 1, int $perPage = 10): array
-    {
-        $query['from'] = ($page - 1) * $perPage;
-        $query['size'] = $perPage;
-        if (empty($query['body']['query'])) {
-            $query['body']['query'] = ['match_all' => new \stdClass()];
-        }
-        $result = $this->esClient->search($query, $this->index);
-
-        return [
-            'results' => array_map(fn($item) => $this->entityObject->hydrate($item['_source'])->toArray(), $result['hits']['hits']),
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'total' => $result['hits']['total']['value']
-        ];
-    }
 
     /**
-     * Creates a new record in the Elasticsearch index using the provided entity and assigns it a unique identifier.
+     * Creates and stores a new entity in the repository.
      *
-     * @param EntityInterface $entity The entity to be created and inserted into the Elasticsearch index.
-     * @return EntityInterface The created entity with its unique identifier assigned.
+     * @param EntityInterface $entity The entity to be stored.
+     * @return EntityInterface The stored entity with updated data after creation.
+     * @throws RepositoryCreateException If there is an error during the creation process.
      */
     public function create(EntityInterface $entity): EntityInterface
     {
-        $id = Str::uuid();
-        $entity->setId($id);
-        $this->esClient->insert($entity->toArray(), $id);
-        return $this->find($id);
+        $result = $this->queryBuilder
+            ->into($this->index)
+            ->insert($entity->toArray());
+
+        if ($result['result'] !== 'created') {
+            throw new RepositoryCreateException($result['error']);
+        }
+
+        return new $this->entity($result['data']);
+
     }
 
+
     /**
-     * Updates an existing entity in the Elasticsearch index and retrieves the updated entity.
+     * Updates an existing entity in the repository and returns the updated entity.
      *
-     * @param EntityInterface $entity The entity to update, including its data and identifier.
-     * @return EntityInterface The updated entity retrieved from the Elasticsearch index.
+     * @param EntityInterface $entity The entity to update, containing its identifier and updated data.
+     * @return EntityInterface The updated entity after successful modification.
+     * @throws RepositoryUpdateException If the update operation fails or encounters an error.
      */
     public function update(EntityInterface $entity): EntityInterface
     {
-        $this->esClient->update($entity->toArray(), $entity->getId());
-        return $this->find($entity->getId());
+        $result = $this->queryBuilder
+            ->from($this->index)
+            ->update($entity->getId(), $entity->toArray());
+
+        if (!in_array($result['result'], ['updated', 'noop'])) {
+            throw new RepositoryUpdateException($result['error']);
+        }
+
+        return new $this->entity($result['data']);
     }
 
     /**
@@ -165,7 +166,36 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): bool
     {
-        return 'deleted' === $this->esClient->delete($id, $this->index);
+        return in_array($this->queryBuilder->delete($id)['result'], ['deleted', 'updated', 'noop']);
+    }
+
+    /**
+     * Parses query parameters to construct a QueryBuilder object.
+     *
+     * @param array $params The query parameters, which may include optional keys such as '_fields' for selecting specific fields,
+     *                      '_sort' for defining sorting order, and other key-value pairs for filtering conditions.
+     * @return QueryBuilder The constructed QueryBuilder instance reflecting the parsed parameters.
+     */
+    public function parseQuery(array $params): QueryBuilder
+    {
+        $query = $this->queryBuilder->from($this->index);
+
+        $query->select(explode(',', $params['_fields'] ?? '*'));
+
+        if (!empty($params['_sort'])) {
+            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
+            foreach ($sortList as $sort) {
+                $query->orderBy($sort[0], $sort[1] ?? 'asc');
+            }
+        }
+
+        foreach ($params as $key => $value) {
+            if (str_starts_with($key, '_')) {
+                continue;
+            }
+            $query->where($key, '=', $value);
+        }
+        return $query;
     }
 
 

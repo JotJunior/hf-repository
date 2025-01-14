@@ -5,13 +5,11 @@ namespace Jot\HfRepository;
 interface RepositoryInterface
 {
 
-    public function find(string $id): EntityInterface;
+    public function find(string $id): ?EntityInterface;
 
-    public function first(array $query): EntityInterface;
+    public function first(array $params): ?EntityInterface;
 
-    public function paginate(array $query, int $page = 1, int $perPage = 10): array;
-
-    public function all(array $query): array;
+    public function paginate(array $params, int $page = 1, int $perPage = 10): array;
 
     public function create(EntityInterface $entity): EntityInterface;
 

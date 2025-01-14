@@ -7,6 +7,6 @@ use DateTime;
 trait HasLogicRemoval
 {
 
-    protected ?bool $removed = null;
+    protected ?bool $deleted = null;
 
 }
