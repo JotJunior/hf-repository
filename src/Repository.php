@@ -198,5 +198,21 @@ abstract class Repository implements RepositoryInterface
         return $query;
     }
 
+    /**
+     * Checks if a record with the specified identifier exists in the database.
+     *
+     * @param string $id The unique identifier of the record to check for existence.
+     * @return bool True if the record exists, false otherwise.
+     */
+    public function exists(string $id): bool
+    {
+        return $this->queryBuilder
+            ->select()
+            ->from($this->index)
+            ->where('id', '=', $id)
+            ->count() > 0;
+    }
+
+
 
 }

@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{namespace}};
+
+use Jot\HfRepository\Entity;
+use Jot\HfRepository\Trait\HasTimestamps;
+use Jot\HfRepository\Trait\HasLogicRemoval;
+use Hyperf\Swagger\Annotation as SA;
+
+#[SA\Schema(schema: "{{schema}}")]
+class {{class_name}} extends Entity
+{
+
+    {{traits}}
+
+    {{attributes}}
+
+}

@@ -26,9 +26,11 @@
       "config": "Jot\\HfRepository\\ConfigProvider"
     }
   },
+  "info": "<fg=yellow>ATTENTION!</> You must publish Swagger and RateLimit configuration files.\nphp bin/hyperf.php vendor:publish hyperf/swagger\nphp bin/hyperf.php vendor:publish hyperf/rate-limit\n",
   "scripts": {
     "post-root-package-install": [
-      "@php bin/hyperf.php vendor:publish hyperf/swagger"
+      "@php bin/hyperf.php vendor:publish hyperf/swagger",
+      "@php bin/hyperf.php vendor:publish hyperf/rate-limit"
     ]
   },
   "require": {
@@ -37,6 +39,8 @@
     "hyperf/di": "~3.1.0",
     "hyperf/swagger": "^3.1",
     "jot/hf-elastic": "^0.12",
-    "zircote/swagger-php": "^4.11"
+    "zircote/swagger-php": "^4.11",
+    "hyperf/rate-limit": "^3.1",
+    "hyperf/redis": "^3.1"
   }
 }

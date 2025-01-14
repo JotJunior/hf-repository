@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Controller;
+namespace {{namespace}};
 
-use App\Repository\{{class_name}}Repository;
+use App\Controller\AbstractController;
 use App\Entity\{{class_name}}\{{class_name}};
+use App\Repository\{{class_name}}Repository;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
 use Hyperf\HttpServer\Annotation\DeleteMapping;
 use Hyperf\HttpServer\Annotation\GetMapping;
 use Hyperf\HttpServer\Annotation\PostMapping;
 use Hyperf\HttpServer\Annotation\PutMapping;
-use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
-
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 #[SA\HyperfServer('http')]
 #[SA\Tag(
@@ -109,6 +110,7 @@ class {{class_name}}Controller extends AbstractController
             )
         ]
     )]
+    #[RateLimit(create: 10, consume: 1)]
     #[GetMapping('{{service_name}}[/]')]
     public function get{{class_name}}sList(): PsrResponseInterface
     {
@@ -178,6 +180,7 @@ class {{class_name}}Controller extends AbstractController
             )
         ]
     )]
+    #[RateLimit(create: 10, consume: 1)]
     #[GetMapping('{{service_name}}/{id}')]
     public function get{{class_name}}Data(string $id): PsrResponseInterface
     {
@@ -225,6 +228,7 @@ class {{class_name}}Controller extends AbstractController
             )
         ]
     )]
+    #[RateLimit(create: 10, consume: 2)]
     #[PostMapping('{{service_name}}[/]')]
     public function create{{class_name}}(): PsrResponseInterface
     {
@@ -288,6 +292,7 @@ class {{class_name}}Controller extends AbstractController
             )
         ]
     )]
+    #[RateLimit(create: 10, consume: 5)]
     #[PutMapping('{{service_name}}/{id}')]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
@@ -367,6 +372,7 @@ class {{class_name}}Controller extends AbstractController
             )
         ]
     )]
+    #[RateLimit(create: 1, consume: 1)]
     #[DeleteMapping('{{service_name}}/{id}')]
     public function delete{{class_name}}(string $id): PsrResponseInterface
     {
