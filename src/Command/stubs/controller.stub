@@ -29,7 +29,7 @@ use Hyperf\Swagger\Annotation as SA;
     ],
     type: "object"
 )]
-#[Controller(prefix: '/v1')]
+#[Controller(prefix: '/{{api_version}}')]
 class {{class_name}}Controller extends AbstractController
 {
 
