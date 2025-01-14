@@ -26,9 +26,9 @@
       "config": "Jot\\HfRepository\\ConfigProvider"
     }
   },
-  "info": "<fg=yellow>ATTENTION!</> You must publish Swagger and RateLimit configuration files.\nphp bin/hyperf.php vendor:publish hyperf/swagger\nphp bin/hyperf.php vendor:publish hyperf/rate-limit\n",
   "scripts": {
-    "post-root-package-install": [
+    "post-install-cmd": [
+      "echo 'Import Swagger and RateLimit config files:'",
       "@php bin/hyperf.php vendor:publish hyperf/swagger",
       "@php bin/hyperf.php vendor:publish hyperf/rate-limit"
     ]
