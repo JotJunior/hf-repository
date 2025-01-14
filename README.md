@@ -27,7 +27,7 @@ O projeto segue uma arquitetura limpa e bem organizada:
 
 - **Entidades ([Entity](docs/entity.md))**: Representam os dados do negócio e oferecem funcionalidades para manipulação e hidratação de
   valores.
-- **Repositórios ([Repository](docs/entity.md))**: Realizam todas as interações com a camada de dados, encapsulando as operações.
+- **Repositórios ([Repository](docs/repository.md))**: Realizam todas as interações com a camada de dados, encapsulando as operações.
 - **Construtor de Consultas (`QueryBuilder`)**: Fornece suporte à criação e execução de consultas dinâmicas no
   Elasticsearch.
 
