@@ -9,10 +9,6 @@ use App\Entity\{{class_name}}\{{class_name}};
 use App\Repository\{{class_name}}Repository;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
-use Hyperf\HttpServer\Annotation\DeleteMapping;
-use Hyperf\HttpServer\Annotation\GetMapping;
-use Hyperf\HttpServer\Annotation\PostMapping;
-use Hyperf\HttpServer\Annotation\PutMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
@@ -38,7 +34,7 @@ class {{class_name}}Controller extends AbstractController
     protected {{class_name}}Repository $repository;
 
     #[SA\Get(
-        path: "/{{service_name}}",
+        path: "/{{api_version}}/{{service_name}}",
         description: "Retrieve a list of {{service_name}} with optional pagination.",
         summary: "Get {{class_name}}s List",
         tags: ["{{class_name}}"],
@@ -111,10 +107,9 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 1)]
-    #[GetMapping('{{service_name}}[/]')]
     public function get{{class_name}}sList(): PsrResponseInterface
     {
-        $response = $this->repository->paginate($this->request->all());
+        $response = $this->repository->paginate($this->request->query());
         if ($response['result'] === 'error') {
             return $this->response->withStatus(400)->json($response);
         }
@@ -125,7 +120,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Get(
-        path: "/{{service_name}}/{id}",
+        path: "/{{api_version}}/{{service_name}}/{id}",
         description: "Retrieve the details of a specific {{service_name}} identified by ID.",
         summary: "Get {{class_name}} Data",
         tags: ["{{class_name}}"],
@@ -181,7 +176,6 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 1)]
-    #[GetMapping('{{service_name}}/{id}')]
     public function get{{class_name}}Data(string $id): PsrResponseInterface
     {
         $response = $this->repository->find($id);
@@ -202,7 +196,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Post(
-        path: "/{{service_name}}",
+        path: "/{{api_version}}/{{service_name}}",
         description: "Add a new {{service_name}} to the system.",
         summary: "Create a New {{class_name}}",
         requestBody: new SA\RequestBody(
@@ -229,10 +223,9 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 2)]
-    #[PostMapping('{{service_name}}[/]')]
     public function create{{class_name}}(): PsrResponseInterface
     {
-        $entity = new {{class_name}}($this->request->all());
+        $entity = new {{class_name}}($this->request->query());
 
         try {
             $response = $this->repository->create($entity);
@@ -252,7 +245,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Put(
-        path: "/{{service_name}}/{id}",
+        path: "/{{api_version}}/{{service_name}}/{id}",
         description: "Update the details of an existing {{service_name}}.",
         summary: "Update an {{class_name}}",
         requestBody: new SA\RequestBody(
@@ -293,10 +286,9 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 5)]
-    #[PutMapping('{{service_name}}/{id}')]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
-        $entity = new {{class_name}}(['id' => $id, ...$this->request->all()]);
+        $entity = new {{class_name}}(['id' => $id, ...$this->request->query()]);
 
         try {
             $response = $this->repository->update($entity);
@@ -316,7 +308,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Delete(
-        path: "/{{service_name}}/{id}",
+        path: "/{{api_version}}/{{service_name}}/{id}",
         description: "Delete an existing {{service_name}} by its unique identifier.",
         summary: "Delete an {{class_name}}",
         tags: ["{{class_name}}"],
@@ -373,7 +365,6 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 1, consume: 1)]
-    #[DeleteMapping('{{service_name}}/{id}')]
     public function delete{{class_name}}(string $id): PsrResponseInterface
     {
         return $this->response->json([

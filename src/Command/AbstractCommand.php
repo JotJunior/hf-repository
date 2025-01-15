@@ -225,15 +225,15 @@ class AbstractCommand extends HyperfCommand
                     break;
                 case 'nested':
                     $nestedClassName = ucfirst(Str::camel($fieldName));
+                    $fieldName = Str::plural($fieldName);
                     $this->generateEntityFromMapping($details, $nestedClassName, $namespace, $outputDir, true);
                     $phpType = 'array';
                     $docType = "\\$namespace\\{$nestedClassName}[]";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        ref: \"#/components/schemas/$docSchema\",\n";
                     $attributes .= "        type: \"array\",\n";
-                    $attributes .= "        items: new SA\Items(ref: \"\$#/components/schemas/$docSchema\"),\n";
+                    $attributes .= "        items: new SA\Items(ref: \"#/components/schemas/$docSchema\"),\n";
                     $attributes .= "        x: [\"php_type\" => \"$docType\"]\n";
                     $attributes .= "    )]\n";
                     break;
@@ -320,43 +320,5 @@ class AbstractCommand extends HyperfCommand
         $this->line(sprintf('<fg=green>[OK]</> %s', $outputFile));
 
     }
-
-
-    /**
-     * Indents the console messages within the provided callback by a specified number of spaces.
-     *
-     * @param callable $callback The callback containing console messages to be indented.
-     * @param int $indentLevel The number of spaces to indent the messages.
-     *
-     * @return void
-     */
-    protected function indentBlock(callable $callback, int $indentLevel): void
-    {
-        $originalOutput = $this->output;
-
-        $this->output = new class($this->output, $indentLevel) extends \Symfony\Component\Console\Output\Output {
-            private $output;
-            private $indentation;
-
-            public function __construct($output, $indentLevel)
-            {
-                parent::__construct($output->getVerbosity(), $output->isDecorated(), $output->getFormatter());
-                $this->output = $output;
-                $this->indentation = str_repeat(' ', $indentLevel);
-            }
-
-            protected function doWrite(string $message, bool $newline): void
-            {
-                $this->output->write($this->indentation . $message, $newline);
-            }
-        };
-
-        try {
-            $callback($this);
-        } finally {
-            $this->output = $originalOutput;
-        }
-    }
-
 
 }
