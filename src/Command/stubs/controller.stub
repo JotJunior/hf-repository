@@ -9,6 +9,10 @@ use App\Entity\{{class_name}}\{{class_name}};
 use App\Repository\{{class_name}}Repository;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Annotation\DeleteMapping;
+use Hyperf\HttpServer\Annotation\GetMapping;
+use Hyperf\HttpServer\Annotation\PostMapping;
+use Hyperf\HttpServer\Annotation\PutMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
@@ -107,6 +111,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 1)]
+    #[GetMapping(path: "orders")]
     public function get{{class_name}}sList(): PsrResponseInterface
     {
         $response = $this->repository->paginate($this->request->query());
@@ -176,6 +181,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 1)]
+    #[GetMapping(path: "orders/{id}")]
     public function get{{class_name}}Data(string $id): PsrResponseInterface
     {
         $response = $this->repository->find($id);
@@ -223,6 +229,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 2)]
+    #[PostMapping(path: "orders")]
     public function create{{class_name}}(): PsrResponseInterface
     {
         $entity = new {{class_name}}($this->request->all());
@@ -286,6 +293,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 5)]
+    #[PutMapping(path: "orders/{id}")]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
         $entity = new {{class_name}}(['id' => $id, ...$this->request->all()]);
@@ -365,6 +373,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 1, consume: 1)]
+    #[DeleteMapping(path: "orders/{id}")]
     public function delete{{class_name}}(string $id): PsrResponseInterface
     {
         return $this->response->json([
