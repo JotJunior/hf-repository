@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use OpenApi\Attributes as OA;
+use Hyperf\Swagger\Annotation as SA;
 
 abstract class Entity implements EntityInterface
 {
@@ -43,14 +43,16 @@ abstract class Entity implements EntityInterface
             $property = Str::camel($key);
             if ($this->propertyExistsInEntity($property)) {
                 $reflection = new \ReflectionProperty($this, $property);
-                $attributes = $reflection->getAttributes(OA\Property::class);
+                $attributes = $reflection->getAttributes(SA\Property::class);
                 $relatedClass = null;
                 foreach ($attributes as $attribute) {
                     $annotation = $attribute->newInstance();
                     if (isset($annotation->x) && is_array($annotation->x)) {
                         $relatedClass = $annotation->x['php_type'];
+                        break;
                     }
                 }
+
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
                     $this->$property = new $relatedClass($value);
                 } else {
