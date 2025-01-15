@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
+use OpenApi\Attributes as OA;
 use Hyperf\Swagger\Annotation as SA;
 
 abstract class Entity implements EntityInterface
@@ -51,7 +52,6 @@ abstract class Entity implements EntityInterface
                         $relatedClass = $annotation->x['php_type'];
                     }
                 }
-
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
                     $this->$property = new $relatedClass($value);
                 } else {

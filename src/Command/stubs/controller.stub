@@ -225,7 +225,7 @@ class {{class_name}}Controller extends AbstractController
     #[RateLimit(create: 10, consume: 2)]
     public function create{{class_name}}(): PsrResponseInterface
     {
-        $entity = new {{class_name}}($this->request->query());
+        $entity = new {{class_name}}($this->request->all());
 
         try {
             $response = $this->repository->create($entity);
@@ -288,7 +288,7 @@ class {{class_name}}Controller extends AbstractController
     #[RateLimit(create: 10, consume: 5)]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
-        $entity = new {{class_name}}(['id' => $id, ...$this->request->query()]);
+        $entity = new {{class_name}}(['id' => $id, ...$this->request->all()]);
 
         try {
             $response = $this->repository->update($entity);
