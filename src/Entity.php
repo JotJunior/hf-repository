@@ -49,7 +49,6 @@ abstract class Entity implements EntityInterface
                     $annotation = $attribute->newInstance();
                     if (isset($annotation->x) && is_array($annotation->x)) {
                         $relatedClass = $annotation->x['php_type'];
-                        break;
                     }
                 }
 
