@@ -412,10 +412,12 @@ class {{class_name}}Controller extends AbstractController
     #[RateLimit(create: 10, consume: 1)]
     public function requestOptions(): PsrResponseInterface
     {
-        return $this->response->json([
-            'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
-            'rate_limit' => 'Max 10 requests per second.'
-        ]);
+        return $this->response
+            ->withHeader("Access-Control-Allow-Origin", "*")
+            ->json([
+                'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
+                'rate_limit' => 'Max 10 requests per second.'
+            ]);
     }
 
 }
