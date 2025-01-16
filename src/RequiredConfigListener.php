@@ -6,7 +6,7 @@ namespace Jot\HfRepository;
 
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Event\Annotation\Listener;
-use Hyperf\Framework\Event\BootApplication;
+use Hyperf\Framework\Event;
 use Psr\Container\ContainerInterface;
 use Hyperf\Event\Contract\ListenerInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -23,7 +23,7 @@ class RequiredConfigListener implements ListenerInterface
     public function listen(): array
     {
         return [
-            BootApplication::class,
+            Event\BeforeServerStart::class
         ];
     }
 
