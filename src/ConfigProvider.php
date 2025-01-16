@@ -23,7 +23,9 @@ class ConfigProvider
                 GenerateRepositoryCommand::class,
                 GenerateCrudCommand::class,
             ],
-            'listeners' => [],
+            'listeners' => [
+                RequiredConfigListener::class,
+            ],
             'publish' => [],
         ];
     }
