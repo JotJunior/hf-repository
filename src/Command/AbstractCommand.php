@@ -331,13 +331,12 @@ class AbstractCommand extends HyperfCommand
             $indexName = $this->ask('Please enter the elasticsearch index name:');
         }
 
-        if (str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
+        if ($this->indexPrefix && str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
             return substr($indexName, strlen($this->indexPrefix) + 1);
-        } elseif (str_starts_with($indexName, $this->indexPrefix) && !$removePrefix) {
-            return $indexName;
+        } elseif ($this->indexPrefix && !str_starts_with($indexName, $this->indexPrefix) && !$removePrefix) {
+            return sprintf('%s_%s', $this->indexPrefix, $indexName);
         }
-
-        return sprintf('%s_%s', $this->indexPrefix, $indexName);
+        return $indexName;
     }
 
 }
