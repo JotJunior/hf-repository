@@ -4,6 +4,7 @@ namespace Jot\HfRepository\Command;
 
 use Elasticsearch\Client;
 use Hyperf\Command\Command as HyperfCommand;
+use Hyperf\Contract\ConfigInterface;
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\ClientBuilder;
 use Psr\Container\ContainerInterface;
@@ -13,12 +14,14 @@ class AbstractCommand extends HyperfCommand
 
     protected Client $esClient;
     protected string $command = '';
+    protected string $indexPrefix = '';
     protected bool $force = false;
 
     public function __construct(protected ContainerInterface $container)
     {
         parent::__construct($this->command);
         $this->esClient = $this->container->get(ClientBuilder::class)->build();
+        $this->indexPrefix = $this->container->get(ConfigInterface::class)->get('hf_elastic')['prefix'];
     }
 
     /**
@@ -70,7 +73,7 @@ class AbstractCommand extends HyperfCommand
         $namespace = sprintf('App\\Entity\\%s', $className);
         $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
 
-        $this->generateEntityFromMapping($this->fetchMapping($indexName), $className, $namespace, $outputDir, false);
+        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
 
     }
 
@@ -319,6 +322,22 @@ class AbstractCommand extends HyperfCommand
         file_put_contents($outputFile, $contents);
         $this->line(sprintf('<fg=green>[OK]</> %s', $outputFile));
 
+    }
+
+    protected function getIndexName(bool $removePrefix = true): string
+    {
+        $indexName = $this->input->getOption('index');
+        if (empty($indexName)) {
+            $indexName = $this->ask('Please enter the elasticsearch index name:');
+        }
+
+        if (str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
+            return substr($indexName, strlen($this->indexPrefix) + 1);
+        } elseif (str_starts_with($indexName, $this->indexPrefix) && !$removePrefix) {
+            return $indexName;
+        }
+
+        return sprintf('%s_%s', $this->indexPrefix, $indexName);
     }
 
 }

@@ -25,10 +25,8 @@ class GenerateEntityCommand extends AbstractCommand
     public function handle()
     {
 
-        $indexName = $this->input->getOption('index');
-        if (empty($indexName)) {
-            $indexName = $this->ask('Please enter the elasticsearch index name:');
-        }
+        $indexName = $this->getIndexName();
+
         $this->force = boolval($this->input->getOption('force'));
 
         $this->createEntities($indexName);

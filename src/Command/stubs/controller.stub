@@ -379,7 +379,7 @@ class {{class_name}}Controller extends AbstractController
         path: "/{{api_version}}/{{service_name}}/{id}",
         description: "Check if a valid {{service_name}} exists by its unique identifier.",
         summary: "Check {{service_name}}",
-        tags: ["Order"],
+        tags: ["{{class_name}}"],
         parameters: [
             new SA\Parameter(
                 name: "id",
@@ -403,7 +403,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 10, consume: 1)]
-    public function orderExists(string $id): PsrResponseInterface
+    public function check{{class_name}}(string $id): PsrResponseInterface
     {
         return $this->response->withStatus($this->repository->exists($id) ? 204 : 404)->raw('');
     }

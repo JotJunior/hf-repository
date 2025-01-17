@@ -26,10 +26,8 @@ class GenerateControllerCommand extends AbstractCommand
     public function handle()
     {
 
-        $indexName = $this->input->getOption('index');
-        if (empty($indexName)) {
-            $indexName = $this->ask('Please enter the elasticsearch index name:');
-        }
+        $indexName = $this->getIndexName();
+
         $apiVersion = $this->input->getOption('api-version');
         $this->force = $this->input->getOption('force');
 

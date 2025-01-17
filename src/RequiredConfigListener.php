@@ -31,16 +31,23 @@ class RequiredConfigListener implements ListenerInterface
     {
         $output = new ConsoleOutput();
 
-        foreach (['swagger', 'redis', 'etcd'] as $package) {
-            if (!$this->container->get(ConfigInterface::class)->get($package)) {
-                $output->writeln('');
-                $output->writeln(sprintf('<options=bold;fg=red>[ERROR]</> The required package <options=bold>%s</> is not configured. To proceed, please run the following command before starting the application:', ucfirst($package)));
-                $output->writeln('');
-                $output->writeln(sprintf('    <options=bold>php bin/hyperf.php vendor:publish hyperf/%s</>', $package));
-                $output->writeln('');
-                exit(1);
-
+        $hasMissingRequiredPackages = false;
+        foreach (['hyperf/etcd', 'hyperf/redis', 'hyperf/swagger', 'jot/hf_elastic'] as $package) {
+            $configName = explode('/', $package)[1];
+            if (!$this->container->get(ConfigInterface::class)->get($configName)) {
+                if (!$hasMissingRequiredPackages) {
+                    $output->writeln('');
+                    $output->writeln(sprintf('<options=bold;fg=red>[ERROR]</> The required packages <options=bold>%s</> are not configured. To proceed, please run the following commands before starting the application:', ucfirst($package)));
+                    $output->writeln('');
+                }
+                $output->writeln(sprintf('    <options=bold>php bin/hyperf.php vendor:publish %s</>', $package));
+                $hasMissingRequiredPackages = true;
             }
-        };
+        }
+
+        if ($hasMissingRequiredPackages) {
+            $output->writeln('');
+            exit(1);
+        }
     }
 }

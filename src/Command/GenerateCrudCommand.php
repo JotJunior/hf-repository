@@ -29,13 +29,10 @@ class GenerateCrudCommand extends AbstractCommand
     public function handle()
     {
 
-        $indexName = $this->input->getOption('index');
-        if (empty($indexName)) {
-            $indexName = $this->ask('Please enter the elasticsearch index name:');
-        }
+        $indexName = $this->getIndexName();
 
-        if (!$this->esClient->indices()->exists(['index' => $indexName])) {
-            $this->line(sprintf('Index <fg=yellow>%s</> does not exist.', $indexName));
+        if (!$this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
+            $this->line(sprintf('Index <fg=yellow>%s</> does not exist.', $this->getIndexName(removePrefix: false)));
             $this->newLine();
             return;
         }

@@ -26,19 +26,12 @@
       "config": "Jot\\HfRepository\\ConfigProvider"
     }
   },
-  "scripts": {
-    "post-install-cmd": [
-      "echo 'Import Swagger and RateLimit config files:'",
-      "@php bin/hyperf.php vendor:publish hyperf/swagger",
-      "@php bin/hyperf.php vendor:publish hyperf/rate-limit"
-    ]
-  },
   "require": {
     "php": ">=8.1",
     "hyperf/command": "~3.1.0",
     "hyperf/di": "~3.1.0",
     "hyperf/swagger": "^3.1",
-    "jot/hf-elastic": "^0.12",
+    "jot/hf-elastic": "^0.13",
     "zircote/swagger-php": "^4.11",
     "hyperf/rate-limit": "^3.1",
     "hyperf/redis": "^3.1",
