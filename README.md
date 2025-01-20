@@ -59,6 +59,7 @@ Após a instalação, publique os arquivos de configuração das dependências n
 php bin/hyperf.php vendor:publish hyperf/redis
 php bin/hyperf.php vendor:publish hyperf/rate-limit
 php bin/hyperf.php vendor:publish hyperf/swagger
+php bin/hyperf.php vendor:publish jot/hf_elastic
 ```
 
 ## Exemplo de Uso
