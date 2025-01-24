@@ -170,14 +170,13 @@ class AbstractCommand extends HyperfCommand
     private function mapElasticTypeToPhpType(string $elasticType): string
     {
         return match ($elasticType) {
-            'keyword', 'text' => 'string',
             'date' => '\DateTime',
             'long', 'integer', 'short', 'byte' => 'int',
             'double', 'float' => 'float',
             'boolean' => 'bool',
             'nested' => 'array',
             'object' => 'object',
-            default => 'mixed',
+            default => 'string',
         };
     }
 
