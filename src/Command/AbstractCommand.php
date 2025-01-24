@@ -265,6 +265,7 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: \"$fieldName\",\n";
                     $attributes .= "        type: \"integer\",\n";
+                $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: 5\n";
                     $attributes .= "    )]\n";
                     break;
@@ -274,6 +275,7 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "        property: \"$fieldName\",\n";
                     $attributes .= "        type: \"number\",\n";
                     $attributes .= "        format: \"float\",\n";
+                $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: 123.45\n";
                     $attributes .= "    )]\n";
                     break;
@@ -281,6 +283,7 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: \"$fieldName\",\n";
                     $attributes .= "        type: \"string\",\n";
+                    $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: \"\"\n";
                     $attributes .= "    )]\n";
                     break;
