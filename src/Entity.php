@@ -65,7 +65,7 @@ abstract class Entity implements EntityInterface
                     }
                 }
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
-                    $this->$property = make($relatedClass::class, ['data' => $value]);
+                    $this->$property = make($relatedClass, ['data' => $value]);
                 } else {
                     $this->$property = $value;
                 }
