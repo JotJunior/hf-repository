@@ -12,6 +12,7 @@ use Jot\HfValidator\ValidatorInterface;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use function Hyperf\Support\make;
 
 abstract class Entity implements EntityInterface
 {
@@ -64,7 +65,7 @@ abstract class Entity implements EntityInterface
                     }
                 }
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
-                    $this->$property = new $relatedClass($value);
+                    $this->$property = make($relatedClass::class, ['data' => $value]);
                 } else {
                     $this->$property = $value;
                 }
