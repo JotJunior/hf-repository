@@ -21,7 +21,7 @@ abstract class Entity implements EntityInterface
     protected ?string $id = null;
     protected array $validators = [];
     protected array $errors = [];
-
+    protected array $hidden = ['@timestamp', 'deleted'];
 
     public function __construct(array $data, ContainerInterface $container)
     {
@@ -90,6 +90,9 @@ abstract class Entity implements EntityInterface
 
         foreach ($this->getAllProperties($reflection) as $property) {
             $propertyName = $property->getName();
+            if (in_array($propertyName, $this->hidden)) {
+                continue;
+            }
             $property->setAccessible(true);
 
             try {
@@ -99,7 +102,6 @@ abstract class Entity implements EntityInterface
             }
 
             $array[Str::snake($propertyName)] = $this->extractVariables($value);
-
         }
 
         return array_filter($array);
