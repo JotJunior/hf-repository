@@ -54,7 +54,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return make(Entity::class, ['data' => $result['data'][0]]);
+        return make($this->entity, ['data' => $result['data'][0]]);
     }
 
     /**
@@ -73,7 +73,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return make(Entity::class, ['data' => $result['data'][0]]);
+        return make($this->entity, ['data' => $result['data'][0]]);
     }
 
 
@@ -88,7 +88,7 @@ abstract class Repository implements RepositoryInterface
     {
         $query = $this->parseQuery($params);
         $result = $query->execute();
-        return array_map(fn($item) => make(Entity::class, ['data' => $item]), $result['data'] ?? []);
+        return array_map(fn($item) => make($this->entity, ['data' => $item]), $result['data'] ?? []);
     }
 
     /**
@@ -107,7 +107,7 @@ abstract class Repository implements RepositoryInterface
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
-        $result = array_map(fn($item) => make(Entity::class, ['data' => $item]), $result['data'] ?? []);
+        $result = array_map(fn($item) => make($this->entity, ['data' => $item]), $result['data'] ?? []);
         return [
             ...$result,
             'current_page' => (int)$page,
@@ -134,7 +134,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryCreateException($result['error']);
         }
 
-        return make(Entity::class, ['data' => $result['data']]);
+        return make($this->entity, ['data' => $result['data']]);
 
     }
 
@@ -156,7 +156,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryUpdateException($result['error']);
         }
 
-        return make(Entity::class, ['data' => $result['data']]);
+        return make($this->entity, ['data' => $result['data']]);
     }
 
     /**
