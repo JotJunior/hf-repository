@@ -107,7 +107,7 @@ abstract class Repository implements RepositoryInterface
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
-
+        $result = array_map(fn($item) => make(Entity::class, ['data' => $item]), $result['data'] ?? []);
         return [
             ...$result,
             'current_page' => (int)$page,

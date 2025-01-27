@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
-use Hyperf\Context\ApplicationContext;
-use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
 use Jot\HfRepository\Event\AfterHydration;
 use Jot\HfValidator\ValidatorInterface;
@@ -21,7 +19,7 @@ abstract class Entity implements EntityInterface
     protected ?string $id = null;
     protected array $validators = [];
     protected array $errors = [];
-    protected array $hidden = ['@timestamp', 'deleted'];
+    protected array $hiddenProperties = ['@timestamp', 'deleted', 'eventDispatcher', 'hidden'];
 
     public function __construct(array $data, ContainerInterface $container)
     {
@@ -90,7 +88,7 @@ abstract class Entity implements EntityInterface
 
         foreach ($this->getAllProperties($reflection) as $property) {
             $propertyName = $property->getName();
-            if (in_array($propertyName, $this->hidden)) {
+            if (in_array($propertyName, $this->hiddenProperties)) {
                 continue;
             }
             $property->setAccessible(true);
@@ -107,6 +105,13 @@ abstract class Entity implements EntityInterface
         return array_filter($array);
     }
 
+    /**
+     * Extracts variables by transforming the input value based on its type or characteristics.
+     *
+     * @param mixed $value The input value to be transformed. This can be an object, DateTime instance, or any other type.
+     * @return mixed The transformed value. Returns the array representation if the object has a toArray method,
+     *               a formatted date string if the value is a DateTime instance, or the value itself otherwise.
+     */
     private function extractVariables(mixed $value): mixed
     {
         return match (true) {
@@ -115,21 +120,6 @@ abstract class Entity implements EntityInterface
             default => $value,
         };
 
-    }
-
-    /**
-     * Extracts the related class name from a given doc comment.
-     *
-     * @param string|null $docComment The doc comment to parse, or null if none is provided.
-     * @return string|null The extracted class name if found, or null otherwise.
-     */
-    private function extractRelatedClass(?string $docComment): ?string
-    {
-        if ($docComment && preg_match('/@var\s+\\\\?([\w\\\\]+)/', $docComment, $matches)) {
-            return explode('|', $matches[1])[0];
-        }
-
-        return null;
     }
 
     /**
@@ -177,11 +167,27 @@ abstract class Entity implements EntityInterface
         return clone $this;
     }
 
+    /**
+     * Adds a validator for a specified property.
+     *
+     * @param string $property The name of the property for which the validator is being added.
+     * @param ValidatorInterface $validator The validator to be associated with the specified property.
+     * @return void
+     */
     public function addValidator(string $property, ValidatorInterface $validator): void
     {
         $this->validators[$property] = $validator;
     }
 
+    /**
+     * Validates the current object's properties using predefined validators.
+     *
+     * Iterates through the validators assigned to the properties of the object,
+     * applying each validator to its corresponding property. If any validation fails,
+     * the errors are stored, and the validation result is marked as unsuccessful.
+     *
+     * @return bool True if all validations pass, false if any property validation fails.
+     */
     public function validate(): bool
     {
         foreach ($this->validators as $property => $validator) {
@@ -192,6 +198,11 @@ abstract class Entity implements EntityInterface
         return empty($this->errors);
     }
 
+    /**
+     * Retrieves a list of errors.
+     *
+     * @return array An array containing the errors.
+     */
     public function getErrors(): array
     {
         return $this->errors;
