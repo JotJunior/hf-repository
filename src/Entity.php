@@ -19,7 +19,7 @@ abstract class Entity implements EntityInterface
     protected ?string $id = null;
     protected array $validators = [];
     protected array $errors = [];
-    protected array $hiddenProperties = ['@timestamp', 'deleted', 'eventDispatcher', 'hidden'];
+    protected array $hiddenProperties = ['@timestamp', 'deleted', 'eventDispatcher', 'hiddenProperties', 'validators', 'errors'];
 
     public function __construct(array $data, ContainerInterface $container)
     {
@@ -206,6 +206,25 @@ abstract class Entity implements EntityInterface
     public function getErrors(): array
     {
         return $this->errors;
+    }
+
+    /**
+     * Hides the specified property or properties by adding them to a list of hidden properties.
+     *
+     * @param string|array $property The property name or an array of property names to hide.
+     * @return self The current instance for method chaining.
+     */
+    public function hide(string|array $property): self
+    {
+        if (is_array($property)) {
+            $this->hiddenProperties = [
+                ...$property,
+                ...$this->hiddenProperties,
+            ];
+        } else if (is_string($property))
+            $this->hiddenProperties[] = $property;
+
+        return $this;
     }
 
 }

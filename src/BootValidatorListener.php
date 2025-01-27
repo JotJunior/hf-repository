@@ -57,6 +57,7 @@ class BootValidatorListener implements ListenerInterface
             Validator\Phone::class,
             Validator\Range::class,
             Validator\Regex::class,
+            Validator\Unique::class,
         ];
     }
 

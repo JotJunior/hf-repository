@@ -13,4 +13,8 @@ interface EntityInterface
 
     public function getId(): ?string;
 
+    public function hide(array|string $property): self;
+
+    public function getErrors(): array;
+
 }

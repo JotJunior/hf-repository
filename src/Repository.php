@@ -107,7 +107,7 @@ abstract class Repository implements RepositoryInterface
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
-        $result = array_map(fn($item) => make($this->entity, ['data' => $item]), $result['data'] ?? []);
+        $result['data'] = array_map(fn($item) => (make($this->entity, ['data' => $item]))->toArray(), $result['data'] ?? []);
         return [
             ...$result,
             'current_page' => (int)$page,
@@ -212,6 +212,18 @@ abstract class Repository implements RepositoryInterface
                 ->from($this->index)
                 ->where('id', '=', $id)
                 ->count() > 0;
+    }
+
+    /**
+     * Generates a hash value using the HMAC method with the SHA-256 algorithm.
+     *
+     * @param string $string The input string to be hashed.
+     * @param string $key The secret key used for hashing.
+     * @return string The resulting hash value as a string.
+     */
+    public function createHash(string $string, string $key): string
+    {
+        return hash_hmac('sha256', $string, $key);
     }
 
 
