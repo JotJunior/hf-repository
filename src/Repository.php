@@ -7,6 +7,7 @@ use Jot\HfElastic\QueryBuilder;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Psr\Container\ContainerInterface;
+use function Hyperf\Support\make;
 
 
 abstract class Repository implements RepositoryInterface
@@ -53,7 +54,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return new $this->entity($result['data'][0] ?? []);
+        return make(Entity::class, ['data' => $result['data'][0]]);
     }
 
     /**
@@ -72,7 +73,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return new $this->entity($result['data'][0] ?? []);
+        return make(Entity::class, ['data' => $result['data'][0]]);
     }
 
 
@@ -87,7 +88,7 @@ abstract class Repository implements RepositoryInterface
     {
         $query = $this->parseQuery($params);
         $result = $query->execute();
-        return array_map(fn($item) => new $this->entity($item), $result['data'] ?? []);
+        return array_map(fn($item) => make(Entity::class, ['data' => $item]), $result['data'] ?? []);
     }
 
     /**
@@ -133,7 +134,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryCreateException($result['error']);
         }
 
-        return new $this->entity($result['data']);
+        return make(Entity::class, ['data' => $result['data']]);
 
     }
 
@@ -155,7 +156,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryUpdateException($result['error']);
         }
 
-        return new $this->entity($result['data']);
+        return make(Entity::class, ['data' => $result['data']]);
     }
 
     /**
@@ -207,12 +208,11 @@ abstract class Repository implements RepositoryInterface
     public function exists(string $id): bool
     {
         return $this->queryBuilder
-            ->select()
-            ->from($this->index)
-            ->where('id', '=', $id)
-            ->count() > 0;
+                ->select()
+                ->from($this->index)
+                ->where('id', '=', $id)
+                ->count() > 0;
     }
-
 
 
 }

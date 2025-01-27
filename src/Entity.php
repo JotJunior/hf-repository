@@ -4,19 +4,30 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
+use Hyperf\Context\ApplicationContext;
+use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
-use OpenApi\Attributes as OA;
+use Jot\HfRepository\Event\AfterHydration;
+use Jot\HfValidator\ValidatorInterface;
 use Hyperf\Swagger\Annotation as SA;
+use Psr\Container\ContainerInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 abstract class Entity implements EntityInterface
 {
 
+    protected EventDispatcherInterface $eventDispatcher;
     protected ?string $id = null;
+    protected array $validators = [];
+    protected array $errors = [];
 
-    public function __construct(array $data = [])
+
+    public function __construct(array $data, ContainerInterface $container)
     {
-        if (!empty($data)) {
-            $this->hydrate($data);
+        $this->hydrate($data);
+        if ($container->has(EventDispatcherInterface::class)) {
+            $this->eventDispatcher = $container->get(EventDispatcherInterface::class);
+            $this->eventDispatcher->dispatch(new AfterHydration($this));
         }
     }
 
@@ -161,6 +172,26 @@ abstract class Entity implements EntityInterface
     public function clone(): self
     {
         return clone $this;
+    }
+
+    public function addValidator(string $property, ValidatorInterface $validator): void
+    {
+        $this->validators[$property] = $validator;
+    }
+
+    public function validate(): bool
+    {
+        foreach ($this->validators as $property => $validator) {
+            if (!$validator->validate($this->$property)) {
+                $this->errors[$property] = array_merge($validator->getErrors(), $this->errors);
+            }
+        }
+        return empty($this->errors);
+    }
+
+    public function getErrors(): array
+    {
+        return $this->errors;
     }
 
 }

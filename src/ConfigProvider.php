@@ -25,6 +25,7 @@ class ConfigProvider
             ],
             'listeners' => [
                 RequiredConfigListener::class,
+                BootValidatorListener::class,
             ],
             'publish' => [],
         ];
