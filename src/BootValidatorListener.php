@@ -43,6 +43,7 @@ class BootValidatorListener implements ListenerInterface
             $validators = AnnotationCollector::getPropertiesByAnnotation($annotation);
             foreach ($validators as $validator) {
                 if ($event->entity instanceof $validator['class']) {
+                    $validator['annotation']->setContainer($this->container);
                     $event->entity->addValidator($validator['property'], $validator['annotation']);
                 }
             }

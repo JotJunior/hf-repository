@@ -184,7 +184,7 @@ abstract class Entity implements EntityInterface
     {
         foreach ($this->validators as $property => $validator) {
             if (!$validator->validate($this->$property)) {
-                $this->errors[$property] = array_merge($validator->getErrors(), $this->errors);
+                $this->errors[$property] = $validator->getErrors();
             }
         }
         return empty($this->errors);
