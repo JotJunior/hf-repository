@@ -4,6 +4,7 @@ namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Psr\Container\ContainerInterface;
@@ -118,14 +119,19 @@ abstract class Repository implements RepositoryInterface
 
 
     /**
-     * Creates and stores a new entity in the repository.
+     * Creates a new entity in the repository after validating the provided entity's data.
      *
-     * @param EntityInterface $entity The entity to be stored.
-     * @return EntityInterface The stored entity with updated data after creation.
-     * @throws RepositoryCreateException If there is an error during the creation process.
+     * @param EntityInterface $entity The entity instance to be created, which must pass validation.
+     * @return EntityInterface The newly created entity instance populated with the resulting data.
+     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
+     * @throws RepositoryCreateException If an error occurs during the creation process in the repository.
      */
     public function create(EntityInterface $entity): EntityInterface
     {
+        if (!$entity->validate()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
+
         $result = $this->queryBuilder
             ->into($this->index)
             ->insert($entity->toArray());
@@ -148,6 +154,10 @@ abstract class Repository implements RepositoryInterface
      */
     public function update(EntityInterface $entity): EntityInterface
     {
+        if (!$entity->validate()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
+
         $result = $this->queryBuilder
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
