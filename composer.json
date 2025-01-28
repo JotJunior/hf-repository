@@ -23,7 +23,12 @@
   ],
   "extra": {
     "hyperf": {
-      "config": "Jot\\HfRepository\\ConfigProvider"
+      "config": "Jot\\HfRepository\\ConfigProvider",
+      "annotations": {
+        "scan": [
+          "src"
+        ]
+      }
     }
   },
   "require": {

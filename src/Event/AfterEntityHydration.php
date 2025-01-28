@@ -4,7 +4,7 @@ namespace Jot\HfRepository\Event;
 
 use Jot\HfRepository\EntityInterface;
 
-class AfterHydration
+class AfterEntityHydration
 {
     public function __construct(public EntityInterface $entity)
     {

@@ -7,7 +7,7 @@ namespace Jot\HfRepository;
 use Hyperf\Di\Annotation\AnnotationCollector;
 use Hyperf\Event\Annotation\Listener;
 use Hyperf\Event\Contract\ListenerInterface;
-use Jot\HfRepository\Event\AfterHydration;
+use Jot\HfRepository\Event\AfterEntityHydration;
 use Jot\HfValidator\Validator;
 use Psr\Container\ContainerInterface;
 
@@ -21,7 +21,7 @@ class BootValidatorListener implements ListenerInterface
     public function listen(): array
     {
         return [
-            AfterHydration::class,
+            AfterEntityHydration::class,
         ];
     }
 
@@ -52,8 +52,10 @@ class BootValidatorListener implements ListenerInterface
             Validator\Enum::class,
             Validator\Gt::class,
             Validator\Gte::class,
+            Validator\Length::class,
             Validator\Lt::class,
             Validator\Lte::class,
+            Validator\Password::class,
             Validator\Phone::class,
             Validator\Range::class,
             Validator\Regex::class,
@@ -71,7 +73,6 @@ class BootValidatorListener implements ListenerInterface
     private function processValidator(string $validatorClass, object $event): void
     {
         $collectedAnnotations = AnnotationCollector::getPropertiesByAnnotation($validatorClass);
-
         foreach ($collectedAnnotations as $annotationData) {
             $this->applyValidatorToEntity($annotationData, $event);
         }
@@ -86,7 +87,7 @@ class BootValidatorListener implements ListenerInterface
      */
     private function applyValidatorToEntity(array $annotationData, object $event): void
     {
-        if ($event instanceof AfterHydration && $event->entity instanceof $annotationData['class']) {
+        if ($event instanceof AfterEntityHydration && $event->entity instanceof $annotationData['class']) {
             $annotationData['annotation']->setContainer($this->container);
             $event->entity->addValidator($annotationData['property'], $annotationData['annotation']);
         }

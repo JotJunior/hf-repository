@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use Jot\HfRepository\Event\AfterHydration;
+use Jot\HfRepository\Event\AfterEntityHydration;
 use Jot\HfValidator\ValidatorInterface;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
@@ -26,7 +26,7 @@ abstract class Entity implements EntityInterface
         $this->hydrate($data);
         if ($container->has(EventDispatcherInterface::class)) {
             $this->eventDispatcher = $container->get(EventDispatcherInterface::class);
-            $this->eventDispatcher->dispatch(new AfterHydration($this));
+            $this->eventDispatcher->dispatch(new AfterEntityHydration($this));
         }
     }
 
