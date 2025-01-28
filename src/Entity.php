@@ -179,20 +179,17 @@ abstract class Entity implements EntityInterface
         $this->validators[$property] = $validator;
     }
 
+
     /**
-     * Validates the current object's properties using predefined validators.
+     * Validates the properties of the current entity using defined validators.
      *
-     * Iterates through the validators assigned to the properties of the object,
-     * applying each validator to its corresponding property. If any validation fails,
-     * the errors are stored, and the validation result is marked as unsuccessful.
-     *
-     * @return bool True if all validations pass, false if any property validation fails.
+     * @return bool True if all properties pass validation, false if any errors are found.
      */
     public function validate(): bool
     {
-        foreach ($this->validators as $property => $validator) {
-            if (!$validator->validate($this->$property)) {
-                $this->errors[$property] = $validator->getErrors();
+        foreach (EntityValidator::list(get_class($this)) as $property => $validator) {
+            if ($validator && !$validator->validate($this->$property)) {
+                $this->errors[$property] = $validator->consumeErrors();
             }
         }
         return empty($this->errors);
@@ -224,6 +221,21 @@ abstract class Entity implements EntityInterface
         } else if (is_string($property))
             $this->hiddenProperties[] = $property;
 
+        return $this;
+    }
+
+    /**
+     * Creates a hashed version of the specified property using a salt and updates it in the current object.
+     *
+     * @param string $property The name of the property to hash.
+     * @param string $salt The salt to use for hashing.
+     * @return self The current instance with the hashed property.
+     */
+    public function createHash(string $property, string $salt): self
+    {
+        if (property_exists($this, $property)) {
+            $this->$property = hash_hmac('sha256', $this->$property, $salt);
+        }
         return $this;
     }
 

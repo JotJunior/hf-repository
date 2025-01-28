@@ -7,7 +7,7 @@ namespace Jot\HfRepository;
 use Hyperf\Di\Annotation\AnnotationCollector;
 use Hyperf\Event\Annotation\Listener;
 use Hyperf\Event\Contract\ListenerInterface;
-use Jot\HfRepository\Event\AfterEntityHydration;
+use Hyperf\Framework\Event\BootApplication;
 use Jot\HfValidator\Validator;
 use Psr\Container\ContainerInterface;
 
@@ -21,7 +21,7 @@ class BootValidatorListener implements ListenerInterface
     public function listen(): array
     {
         return [
-            AfterEntityHydration::class,
+            BootApplication::class,
         ];
     }
 
@@ -74,22 +74,9 @@ class BootValidatorListener implements ListenerInterface
     {
         $collectedAnnotations = AnnotationCollector::getPropertiesByAnnotation($validatorClass);
         foreach ($collectedAnnotations as $annotationData) {
-            $this->applyValidatorToEntity($annotationData, $event);
+            $annotationData['annotation']->setContainer($this->container);
+            EntityValidator::addValidator($annotationData['class'], $annotationData['property'], $annotationData['annotation']);
         }
     }
 
-    /**
-     * Applies a validator to an entity based on the provided annotation data and event.
-     *
-     * @param array $annotationData An associative array containing annotation-specific data, including 'class', 'property', and 'annotation'.
-     * @param object $event The event object, which is checked for type and entity compatibility before applying the validator.
-     * @return void
-     */
-    private function applyValidatorToEntity(array $annotationData, object $event): void
-    {
-        if ($event instanceof AfterEntityHydration && $event->entity instanceof $annotationData['class']) {
-            $annotationData['annotation']->setContainer($this->container);
-            $event->entity->addValidator($annotationData['property'], $annotationData['annotation']);
-        }
-    }
 }
