@@ -9,7 +9,7 @@ class EntityValidator
 
     static public function addValidator(string $entity, string $property, ?object $validator): void
     {
-        self::$validators[$entity][$property] = $validator;
+        self::$validators[$entity][$property][] = $validator;
     }
 
     static public function list(string $entity): array

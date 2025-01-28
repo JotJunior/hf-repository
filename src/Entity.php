@@ -187,9 +187,11 @@ abstract class Entity implements EntityInterface
      */
     public function validate(): bool
     {
-        foreach (EntityValidator::list(get_class($this)) as $property => $validator) {
-            if ($validator && !$validator->validate($this->$property)) {
-                $this->errors[$property] = $validator->consumeErrors();
+        foreach (EntityValidator::list(get_class($this)) as $property => $validators) {
+            foreach ($validators as $validator) {
+                if ($validator && !$validator->validate($this->$property)) {
+                    $this->errors[$property] = $validator->consumeErrors();
+                }
             }
         }
         return empty($this->errors);

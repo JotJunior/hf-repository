@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Di\Annotation\AnnotationCollector;
+use Hyperf\Di\Annotation\MultipleAnnotation;
 use Hyperf\Event\Annotation\Listener;
 use Hyperf\Event\Contract\ListenerInterface;
 use Hyperf\Framework\Event\BootApplication;
@@ -48,10 +49,12 @@ class BootValidatorListener implements ListenerInterface
         return [
             Validator\CNPJ::class,
             Validator\CPF::class,
-            Validator\Elastic::class,
+            Validator\Exists::class,
+            Validator\Email::class,
             Validator\Enum::class,
             Validator\Gt::class,
             Validator\Gte::class,
+            Validator\Ip::class,
             Validator\Length::class,
             Validator\Lt::class,
             Validator\Lte::class,
@@ -59,7 +62,9 @@ class BootValidatorListener implements ListenerInterface
             Validator\Phone::class,
             Validator\Range::class,
             Validator\Regex::class,
+            Validator\Required::class,
             Validator\Unique::class,
+            Validator\Url::class,
         ];
     }
 
@@ -74,7 +79,9 @@ class BootValidatorListener implements ListenerInterface
     {
         $collectedAnnotations = AnnotationCollector::getPropertiesByAnnotation($validatorClass);
         foreach ($collectedAnnotations as $annotationData) {
-            $annotationData['annotation']->setContainer($this->container);
+            if (method_exists($annotationData['annotation'], 'setContainer')) {
+                $annotationData['annotation']->setContainer($this->container);
+            }
             EntityValidator::addValidator($annotationData['class'], $annotationData['property'], $annotationData['annotation']);
         }
     }
