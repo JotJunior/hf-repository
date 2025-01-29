@@ -6,6 +6,7 @@ namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
 use Jot\HfRepository\Event\AfterEntityHydration;
+use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfValidator\ValidatorInterface;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
@@ -15,11 +16,23 @@ use function Hyperf\Support\make;
 abstract class Entity implements EntityInterface
 {
 
+    const STATE_CREATE = 'create';
+    const STATE_UPDATE = 'update';
+
+    private string $entityState = self::STATE_CREATE;
     protected EventDispatcherInterface $eventDispatcher;
     protected ?string $id = null;
     protected array $validators = [];
     protected array $errors = [];
-    protected array $hiddenProperties = ['@timestamp', 'deleted', 'eventDispatcher', 'hiddenProperties', 'validators', 'errors'];
+    protected array $hiddenProperties = [
+        '@timestamp',
+        'deleted',
+        'event_dispatcher',
+        'hidden_properties',
+        'validators',
+        'errors',
+        'entity_state'
+    ];
 
     public function __construct(array $data, ContainerInterface $container)
     {
@@ -88,7 +101,7 @@ abstract class Entity implements EntityInterface
 
         foreach ($this->getAllProperties($reflection) as $property) {
             $propertyName = $property->getName();
-            if (in_array($propertyName, $this->hiddenProperties)) {
+            if (in_array(Str::snake($propertyName), $this->hiddenProperties)) {
                 continue;
             }
             $property->setAccessible(true);
@@ -189,6 +202,9 @@ abstract class Entity implements EntityInterface
     {
         foreach (EntityValidator::list(get_class($this)) as $property => $validators) {
             foreach ($validators as $validator) {
+                if ($validator->skipUpdates() && $this->entityState === self::STATE_UPDATE) {
+                    continue;
+                }
                 if ($validator && !$validator->validate($this->$property)) {
                     $this->errors[$property] = $validator->consumeErrors();
                 }
@@ -238,6 +254,22 @@ abstract class Entity implements EntityInterface
         if (property_exists($this, $property)) {
             $this->$property = hash_hmac('sha256', $this->$property, $salt);
         }
+        return $this;
+    }
+
+    /**
+     * Sets the current state of the entity.
+     *
+     * @param string $state The state to set for the entity. Must be either "create" or "update".
+     * @return self The current instance with the updated state.
+     * @throws EntityValidationWithErrorsException If the provided state is invalid.
+     */
+    public function setEntityState(string $state): self
+    {
+        if (!in_array($state, [self::STATE_CREATE, self::STATE_UPDATE])) {
+            throw new EntityValidationWithErrorsException(['entity_state' => 'Invalid entity state. Must be either "create" or "update".']);
+        }
+        $this->entityState = $state;
         return $this;
     }
 
