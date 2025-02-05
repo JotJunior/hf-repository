@@ -12,6 +12,8 @@ use Psr\Container\ContainerInterface;
 class AbstractCommand extends HyperfCommand
 {
 
+    use HfFriendlyLinesTrait;
+
     protected Client $esClient;
     protected string $command = '';
     protected string $indexPrefix = '';
@@ -96,7 +98,7 @@ class AbstractCommand extends HyperfCommand
         $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
 
         if (file_exists($repositoryFile) && !$this->force) {
-            $this->line(sprintf('<fg=yellow>[SKIP]</> Repository class already exists at %s', $repositoryFile));
+            $this->warn('Repository class already exists at %s', [$repositoryFile]);
             return;
         }
 
@@ -155,7 +157,7 @@ class AbstractCommand extends HyperfCommand
             $response = $this->esClient->indices()->getMapping(['index' => $indexName]);
             return $response[$indexName]['mappings'] ?? null;
         } catch (\Exception $e) {
-            $this->line('<fg=red>[ERROR]</> ' . $e->getMessage());
+            $this->failed($e->getMessage());
             return null;
         }
     }
@@ -170,7 +172,7 @@ class AbstractCommand extends HyperfCommand
     private function mapElasticTypeToPhpType(string $elasticType): string
     {
         return match ($elasticType) {
-            'date' => '\DateTime',
+            'date', 'date_nanos' => '\DateTimeInterface',
             'long', 'integer', 'short', 'byte' => 'int',
             'double', 'float' => 'float',
             'boolean' => 'bool',
@@ -248,6 +250,15 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "        x: [\"php_type\" => \"\\DateTime\"]\n";
                     $attributes .= "    )]\n";
                     break;
+                case 'date_nanos':
+                    $attributes .= "    #[SA\Property(\n";
+                    $attributes .= "        property: \"$fieldName\",\n";
+                    $attributes .= "        type: \"string\",\n";
+                    $attributes .= "        format: \"string\",\n";
+                    $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
+                    $attributes .= "        x: [\"php_type\" => \"\\DateTimeImmutable\"]\n";
+                    $attributes .= "    )]\n";
+                    break;
                 case 'bool':
                 case 'boolean':
                     $phpType = 'bool';
@@ -316,13 +327,13 @@ class AbstractCommand extends HyperfCommand
             if ($answer === 'a') {
                 $this->force = true;
             } elseif ($answer !== 'y') {
-                $this->line(sprintf('<fg=yellow>[SKIP]</> %s', $outputFile));
+                $this->warning('[SKIP] ' . $outputFile);
                 return;
             }
         }
 
         file_put_contents($outputFile, $contents);
-        $this->line(sprintf('<fg=green>[OK]</> %s', $outputFile));
+        $this->success($outputFile);
 
     }
 

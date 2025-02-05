@@ -140,7 +140,13 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryCreateException($result['error']);
         }
 
-        return make($this->entity, ['data' => $result['data']]);
+        $result = make($this->entity, ['data' => $result['data']]);
+
+        if (!$result instanceof EntityInterface) {
+            throw new RepositoryCreateException($result['error']);
+        }
+
+        return $result;
 
     }
 
@@ -177,7 +183,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): bool
     {
-        return in_array($this->queryBuilder->delete($id)['result'], ['deleted', 'updated', 'noop']);
+        return in_array($this->queryBuilder->from($this->index)->delete($id)['result'], ['deleted', 'updated', 'noop']);
     }
 
     /**
@@ -235,6 +241,5 @@ abstract class Repository implements RepositoryInterface
     {
         return hash_hmac('sha256', $string, $key);
     }
-
 
 }

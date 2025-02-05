@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace {{namespace}};
 
 use App\Controller\AbstractController;
-use App\Entity\{{class_name}}\{{class_name}};
+use Jot\HfOAuth2\Entity\{{class_name}}\{{class_name}};
 use App\Repository\{{class_name}}Repository;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;

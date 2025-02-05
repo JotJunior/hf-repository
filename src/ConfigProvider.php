@@ -7,6 +7,7 @@ use Jot\HfRepository\Command\GenerateControllerCommand;
 use Jot\HfRepository\Command\GenerateCrudCommand;
 use Jot\HfRepository\Command\GenerateRepositoryCommand;
 use Jot\HfRepository\Command\GenerateEntityCommand;
+use Jot\HfRepository\Exception\Handler\ControllerExceptionHandler;
 use Jot\HfRepository\Swagger\SwaggerHttpServer;
 
 class ConfigProvider
@@ -23,11 +24,24 @@ class ConfigProvider
                 GenerateRepositoryCommand::class,
                 GenerateCrudCommand::class,
             ],
+            'annotations' => [
+                'scan' => [
+                    'paths' => [
+                        __DIR__,
+                    ],
+                ],
+            ],
             'listeners' => [
                 RequiredConfigListener::class,
-                BootValidatorListener::class,
             ],
             'publish' => [],
+            'exceptions' => [
+                'handler' => [
+                    'http' => [
+                        ControllerExceptionHandler::class
+                    ]
+                ]
+            ]
         ];
     }
 }

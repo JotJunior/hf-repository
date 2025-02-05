@@ -2,14 +2,14 @@
 
 namespace Jot\HfRepository\Trait;
 
-use DateTime;
+use DateTimeInterface;
 
 trait HasTimestamps
 {
 
-    protected null|DateTime $createdAt = null;
+    protected null|DateTimeInterface $createdAt = null;
 
-    protected null|DateTime $updatedAt = null;
+    protected null|DateTimeInterface $updatedAt = null;
 
 
 }

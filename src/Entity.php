@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
+use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\Stringable\Str;
 use Jot\HfRepository\Event\AfterEntityHydration;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
+use Jot\HfValidator\ValidatorChain;
 use Jot\HfValidator\ValidatorInterface;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
@@ -27,14 +29,15 @@ abstract class Entity implements EntityInterface
     protected array $hiddenProperties = [
         '@timestamp',
         'deleted',
+        'entity_state',
+        'errors',
         'event_dispatcher',
         'hidden_properties',
+        'logger',
         'validators',
-        'errors',
-        'entity_state'
     ];
 
-    public function __construct(array $data, ContainerInterface $container)
+    public function __construct(array $data, ContainerInterface $container, protected StdoutLoggerInterface $logger)
     {
         $this->hydrate($data);
         if ($container->has(EventDispatcherInterface::class)) {
@@ -65,25 +68,40 @@ abstract class Entity implements EntityInterface
     {
         foreach ($data as $key => $value) {
             $property = Str::camel($key);
-            if ($this->propertyExistsInEntity($property)) {
-                $reflection = new \ReflectionProperty($this, $property);
-                $attributes = $reflection->getAttributes(SA\Property::class);
-                $relatedClass = null;
-                foreach ($attributes as $attribute) {
-                    $annotation = $attribute->newInstance();
-                    if (isset($annotation->x) && is_array($annotation->x)) {
-                        $relatedClass = $annotation->x['php_type'];
-                    }
-                }
+
+            if (!$this->propertyExistsInEntity($property)) {
+                continue;
+            }
+
+            try {
+                $relatedClass = $this->getRelatedClassFromAttributes($property);
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
                     $this->$property = make($relatedClass, ['data' => $value]);
                 } else {
                     $this->$property = $value;
                 }
+            } catch (\Throwable $throwable) {
+                $this->logger->error(sprintf('%s[%s] in %s', $throwable->getMessage(), $throwable->getLine(), $throwable->getFile()));
             }
         }
 
         return $this;
+    }
+
+    private function getRelatedClassFromAttributes(string $property): ?string
+    {
+        $reflection = new \ReflectionProperty($this, $property);
+        $attributes = $reflection->getAttributes(SA\Property::class);
+
+        foreach ($attributes as $attribute) {
+            $annotation = $attribute->newInstance();
+
+            if (isset($annotation->x['php_type']) && is_string($annotation->x['php_type'])) {
+                return $annotation->x['php_type'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -129,7 +147,7 @@ abstract class Entity implements EntityInterface
     {
         return match (true) {
             is_object($value) && method_exists($value, 'toArray') => $value->toArray(),
-            $value instanceof \DateTime => $value->format(DATE_ATOM),
+            $value instanceof \DateTime, $value instanceof \DateTimeImmutable => $value->format(DATE_ATOM),
             default => $value,
         };
 
@@ -164,7 +182,10 @@ abstract class Entity implements EntityInterface
         $properties = $reflection->getProperties();
 
         foreach ($reflection->getTraits() as $trait) {
-            $properties = array_merge($properties, $trait->getProperties());
+            $properties = array_merge(
+                $properties,
+                $trait->getProperties()
+            );
         }
 
         return $properties;
@@ -200,12 +221,12 @@ abstract class Entity implements EntityInterface
      */
     public function validate(): bool
     {
-        foreach (EntityValidator::list(get_class($this)) as $property => $validators) {
+        foreach (ValidatorChain::list(get_class($this)) as $property => $validators) {
             foreach ($validators as $validator) {
-                if ($validator->skipUpdates() && $this->entityState === self::STATE_UPDATE) {
-                    continue;
-                }
-                if ($validator && !$validator->validate($this->$property)) {
+                $isValid = $this->entityState === self::STATE_UPDATE
+                    ? $validator->onUpdate()->validate($this->$property)
+                    : $validator->validate($this->$property);
+                if ($validator && !$isValid) {
                     $this->errors[$property] = $validator->consumeErrors();
                 }
             }
@@ -249,10 +270,10 @@ abstract class Entity implements EntityInterface
      * @param string $salt The salt to use for hashing.
      * @return self The current instance with the hashed property.
      */
-    public function createHash(string $property, string $salt): self
+    public function createHash(string $property, string $salt, string $encryptionKey): self
     {
         if (property_exists($this, $property)) {
-            $this->$property = hash_hmac('sha256', $this->$property, $salt);
+            $this->$property = hash_hmac('sha256', $this->$property . $salt, $encryptionKey);
         }
         return $this;
     }
