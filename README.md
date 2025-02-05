@@ -131,7 +131,7 @@ documentação do projeto.
 
 declare(strict_types=1);
 
-namespace Jot\HfOAuth2\Entity\Order;
+namespace Jot\HfShield\Entity\Order;
 
 use Jot\HfRepository\Entity;
 use Jot\HfRepository\Trait\HasTimestamps;
@@ -156,9 +156,9 @@ class Order extends Entity
     #[SA\Property(
         property: "customer",
         ref: "#/components/schemas/app.entity.order.customer",
-        x: ["php_type" => "\Jot\HfOAuth2\Entity\Order\Customer"]
+        x: ["php_type" => "\Jot\HfShield\Entity\Order\Customer"]
     )]
-    protected ?\Jot\HfOAuth2\Entity\Order\Customer $customer = null;
+    protected ?\Jot\HfShield\Entity\Order\Customer $customer = null;
 
     #[SA\Property(
         property: "id",
@@ -199,7 +199,7 @@ O comando criará dentro do diretório ```app/Repository``` uma classe User com 
 namespace App\Repository;
 
 use Jot\HfRepository\Repository;
-use Jot\HfOAuth2\Entity\Order\Order as Entity;
+use Jot\HfShield\Entity\Order\Order as Entity;
 
 class OrderRepository extends Repository
 {
@@ -253,7 +253,7 @@ declare(strict_types=1);
 namespace App\Controller\V1;
 
 use App\Controller\AbstractController;
-use Jot\HfOAuth2\Entity\Order\Order;
+use Jot\HfShield\Entity\Order\Order;
 use App\Repository\OrderRepository;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
