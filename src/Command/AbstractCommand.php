@@ -23,7 +23,8 @@ class AbstractCommand extends HyperfCommand
     {
         parent::__construct($this->command);
         $this->esClient = $this->container->get(ClientBuilder::class)->build();
-        $this->indexPrefix = $this->container->get(ConfigInterface::class)->get('hf_elastic')['prefix'];
+        $esConfig = $this->container->get(ConfigInterface::class)->get('hf_elastic');
+        $this->indexPrefix = $esConfig['index_prefix'] ?? '';
     }
 
     /**
@@ -61,69 +62,6 @@ class AbstractCommand extends HyperfCommand
     }
 
     /**
-     * Creates the necessary entity classes based on the provided index name and mapping configuration.
-     *
-     * @param string $indexName The name of the index for which entities need to be created.
-     * @return void
-     */
-    protected function createEntities(string $indexName): void
-    {
-
-        $serviceName = Str::snake($indexName);
-        $schemaName = Str::singular($serviceName);
-        $className = ucfirst(Str::camel($schemaName));
-        $namespace = sprintf('App\\Entity\\%s', $className);
-        $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
-
-        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
-
-    }
-
-    /**
-     * Creates a repository class file for the specified index name.
-     *
-     * @param string $indexName The name of the index to create the repository for.
-     * @return void
-     */
-    protected function createRepository(string $indexName): void
-    {
-        $namespace = 'App\\Repository';
-        $serviceName = Str::snake($indexName);
-        $schemaName = Str::singular($serviceName);
-        $className = ucfirst(Str::camel($schemaName));
-        $entity = str_replace('Repository', '', sprintf('App\\Entity\\%s\\%s', $className, $className));
-
-        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
-        $outputDir = $this->outputDir('/app/Repository');
-        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
-
-        if (file_exists($repositoryFile) && !$this->force) {
-            $this->warn('Repository class already exists at %s', [$repositoryFile]);
-            return;
-        }
-
-        $this->generateFile($repositoryFile, $template);
-    }
-
-    /**
-     * Creates a template by replacing placeholders within a template file with provided variables.
-     *
-     * @param string $name The name of the template file (without extension) to be processed.
-     * @param array $variables An associative array of placeholders and their replacement values.
-     *
-     * @return string The processed template with placeholders replaced by their corresponding values.
-     */
-    private function parseTemplate(string $name, array $variables): string
-    {
-        $template = file_get_contents(sprintf('%s/stubs/%s.stub', __DIR__, $name));
-        array_walk($variables, function ($value, $key) use (&$template) {
-            $template = str_replace('{{' . $key . '}}', $value, $template);
-        });
-
-        return $template;
-    }
-
-    /**
      * Ensures the existence of the specified output directory by creating it if necessary.
      *
      * @param string $path The relative path to the desired output directory.
@@ -145,41 +83,65 @@ class AbstractCommand extends HyperfCommand
     }
 
     /**
-     * Retrieves the mapping configuration for the specified index in Elasticsearch.
+     * Creates a template by replacing placeholders within a template file with provided variables.
      *
-     * @param string $indexName The name of the Elasticsearch index whose mapping is to be fetched.
+     * @param string $name The name of the template file (without extension) to be processed.
+     * @param array $variables An associative array of placeholders and their replacement values.
      *
-     * @return array|null An associative array representing the index mapping if it exists, or null if the mapping cannot be retrieved.
+     * @return string The processed template with placeholders replaced by their corresponding values.
      */
-    private function fetchMapping(string $indexName): ?array
+    private function parseTemplate(string $name, array $variables): string
     {
-        try {
-            $response = $this->esClient->indices()->getMapping(['index' => $indexName]);
-            return $response[$indexName]['mappings'] ?? null;
-        } catch (\Exception $e) {
-            $this->failed($e->getMessage());
-            return null;
-        }
+        $template = file_get_contents(sprintf('%s/stubs/%s.stub', __DIR__, $name));
+        array_walk($variables, function ($value, $key) use (&$template) {
+            $template = str_replace('{{' . $key . '}}', $value, $template);
+        });
+
+        return $template;
     }
 
     /**
-     * Maps an Elasticsearch data type to its corresponding PHP type.
+     * Generates a file with the specified contents and writes it to the given output location.
+     * Prompts the user for confirmation if a file with the same name already exists.
      *
-     * @param string $elasticType The Elasticsearch data type to be mapped.
-     *
-     * @return string The PHP type equivalent of the provided Elasticsearch data type.
+     * @param string $outputFile The path to the file to be generated.
+     * @param string $contents The content to be written to the file.
+     * @return void
      */
-    private function mapElasticTypeToPhpType(string $elasticType): string
+    protected function generateFile(string $outputFile, string $contents): void
     {
-        return match ($elasticType) {
-            'date', 'date_nanos' => '\DateTimeInterface',
-            'long', 'integer', 'short', 'byte' => 'int',
-            'double', 'float' => 'float',
-            'boolean' => 'bool',
-            'nested' => 'array',
-            'object' => 'object',
-            default => 'string',
-        };
+        if (file_exists($outputFile) && !$this->force) {
+            $answer = $this->ask(sprintf('The file <fg=yellow>%s</> already exists. Overwrite file? [y/n/a]', $outputFile), 'n');
+            if ($answer === 'a') {
+                $this->force = true;
+            } elseif ($answer !== 'y') {
+                $this->warning('[SKIP] ' . $outputFile);
+                return;
+            }
+        }
+
+        file_put_contents($outputFile, $contents);
+        $this->success($outputFile);
+
+    }
+
+    /**
+     * Creates the necessary entity classes based on the provided index name and mapping configuration.
+     *
+     * @param string $indexName The name of the index for which entities need to be created.
+     * @return void
+     */
+    protected function createEntities(string $indexName): void
+    {
+
+        $serviceName = Str::snake($indexName);
+        $schemaName = Str::singular($serviceName);
+        $className = ucfirst(Str::camel($schemaName));
+        $namespace = sprintf('App\\Entity\\%s', $className);
+        $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
+
+        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
+
     }
 
     /**
@@ -313,28 +275,41 @@ class AbstractCommand extends HyperfCommand
     }
 
     /**
-     * Generates a file with the specified contents and writes it to the given output location.
-     * Prompts the user for confirmation if a file with the same name already exists.
+     * Maps an Elasticsearch data type to its corresponding PHP type.
      *
-     * @param string $outputFile The path to the file to be generated.
-     * @param string $contents The content to be written to the file.
-     * @return void
+     * @param string $elasticType The Elasticsearch data type to be mapped.
+     *
+     * @return string The PHP type equivalent of the provided Elasticsearch data type.
      */
-    protected function generateFile(string $outputFile, string $contents): void
+    private function mapElasticTypeToPhpType(string $elasticType): string
     {
-        if (file_exists($outputFile) && !$this->force) {
-            $answer = $this->ask(sprintf('The file <fg=yellow>%s</> already exists. Overwrite file? [y/n/a]', $outputFile), 'n');
-            if ($answer === 'a') {
-                $this->force = true;
-            } elseif ($answer !== 'y') {
-                $this->warning('[SKIP] ' . $outputFile);
-                return;
-            }
+        return match ($elasticType) {
+            'date', 'date_nanos' => '\DateTimeInterface',
+            'long', 'integer', 'short', 'byte' => 'int',
+            'double', 'float' => 'float',
+            'boolean' => 'bool',
+            'nested' => 'array',
+            'object' => 'object',
+            default => 'string',
+        };
+    }
+
+    /**
+     * Retrieves the mapping configuration for the specified index in Elasticsearch.
+     *
+     * @param string $indexName The name of the Elasticsearch index whose mapping is to be fetched.
+     *
+     * @return array|null An associative array representing the index mapping if it exists, or null if the mapping cannot be retrieved.
+     */
+    private function fetchMapping(string $indexName): ?array
+    {
+        try {
+            $response = $this->esClient->indices()->getMapping(['index' => $indexName]);
+            return $response[$indexName]['mappings'] ?? null;
+        } catch (\Exception $e) {
+            $this->failed($e->getMessage());
+            return null;
         }
-
-        file_put_contents($outputFile, $contents);
-        $this->success($outputFile);
-
     }
 
     protected function getIndexName(bool $removePrefix = true): string
@@ -350,6 +325,32 @@ class AbstractCommand extends HyperfCommand
             return sprintf('%s_%s', $this->indexPrefix, $indexName);
         }
         return $indexName;
+    }
+
+    /**
+     * Creates a repository class file for the specified index name.
+     *
+     * @param string $indexName The name of the index to create the repository for.
+     * @return void
+     */
+    protected function createRepository(string $indexName): void
+    {
+        $namespace = 'App\\Repository';
+        $serviceName = Str::snake($indexName);
+        $schemaName = Str::singular($serviceName);
+        $className = ucfirst(Str::camel($schemaName));
+        $entity = str_replace('Repository', '', sprintf('App\\Entity\\%s\\%s', $className, $className));
+
+        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
+        $outputDir = $this->outputDir('/app/Repository');
+        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
+
+        if (file_exists($repositoryFile) && !$this->force) {
+            $this->warn('Repository class already exists at %s', [$repositoryFile]);
+            return;
+        }
+
+        $this->generateFile($repositoryFile, $template);
     }
 
 }
