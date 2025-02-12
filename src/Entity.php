@@ -6,11 +6,12 @@ namespace Jot\HfRepository;
 
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\Stringable\Str;
+use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Event\AfterEntityHydration;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
+use Jot\HfRepository\Exception\InvalidEntityException;
 use Jot\HfValidator\ValidatorChain;
 use Jot\HfValidator\ValidatorInterface;
-use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use function Hyperf\Support\make;
@@ -20,8 +21,6 @@ abstract class Entity implements EntityInterface
 
     const STATE_CREATE = 'create';
     const STATE_UPDATE = 'update';
-
-    private string $entityState = self::STATE_CREATE;
     protected EventDispatcherInterface $eventDispatcher;
     protected ?string $id = null;
     protected array $validators = [];
@@ -36,6 +35,7 @@ abstract class Entity implements EntityInterface
         'logger',
         'validators',
     ];
+    private string $entityState = self::STATE_CREATE;
 
     public function __construct(array $data, ContainerInterface $container, protected StdoutLoggerInterface $logger)
     {
@@ -44,16 +44,6 @@ abstract class Entity implements EntityInterface
             $this->eventDispatcher = $container->get(EventDispatcherInterface::class);
             $this->eventDispatcher->dispatch(new AfterEntityHydration($this));
         }
-    }
-
-    /**
-     * Retrieves the ID of the current entity.
-     *
-     * @return string|null The ID of the entity, or null if not set.
-     */
-    public function getId(): ?string
-    {
-        return $this->id;
     }
 
     /**
@@ -88,6 +78,44 @@ abstract class Entity implements EntityInterface
         return $this;
     }
 
+    /**
+     * Checks if a given property exists in the current entity.
+     *
+     * @param string $property The name of the property to check for.
+     * @return bool True if the property exists, false otherwise.
+     */
+    private function propertyExistsInEntity(string $property): bool
+    {
+        $reflection = new \ReflectionClass($this);
+        foreach ($this->getAllProperties($reflection) as $prop) {
+            if ($prop->getName() === $property) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Retrieves all properties of a class, including those from its traits.
+     *
+     * @param \ReflectionClass $reflection The reflection instance of the class.
+     * @return array An array of properties belonging to the class and its traits.
+     */
+    private function getAllProperties(\ReflectionClass $reflection): array
+    {
+        $properties = $reflection->getProperties();
+
+        foreach ($reflection->getTraits() as $trait) {
+            $properties = array_merge(
+                $properties,
+                $trait->getProperties()
+            );
+        }
+
+        return $properties;
+    }
+
     private function getRelatedClassFromAttributes(string $property): ?string
     {
         $reflection = new \ReflectionProperty($this, $property);
@@ -102,6 +130,16 @@ abstract class Entity implements EntityInterface
         }
 
         return null;
+    }
+
+    /**
+     * Retrieves the ID of the current entity.
+     *
+     * @return string|null The ID of the entity, or null if not set.
+     */
+    public function getId(): ?string
+    {
+        return $this->id;
     }
 
     /**
@@ -151,44 +189,6 @@ abstract class Entity implements EntityInterface
             default => $value,
         };
 
-    }
-
-    /**
-     * Checks if a given property exists in the current entity.
-     *
-     * @param string $property The name of the property to check for.
-     * @return bool True if the property exists, false otherwise.
-     */
-    private function propertyExistsInEntity(string $property): bool
-    {
-        $reflection = new \ReflectionClass($this);
-        foreach ($this->getAllProperties($reflection) as $prop) {
-            if ($prop->getName() === $property) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Retrieves all properties of a class, including those from its traits.
-     *
-     * @param \ReflectionClass $reflection The reflection instance of the class.
-     * @return array An array of properties belonging to the class and its traits.
-     */
-    private function getAllProperties(\ReflectionClass $reflection): array
-    {
-        $properties = $reflection->getProperties();
-
-        foreach ($reflection->getTraits() as $trait) {
-            $properties = array_merge(
-                $properties,
-                $trait->getProperties()
-            );
-        }
-
-        return $properties;
     }
 
     /**
@@ -292,6 +292,21 @@ abstract class Entity implements EntityInterface
         }
         $this->entityState = $state;
         return $this;
+    }
+
+    /**
+     * Retrieves the value of an inaccessible or non-public property.
+     *
+     * @param string $name The name of the property to retrieve.
+     * @return mixed The value of the requested property.
+     * @throws InvalidEntityException If the property does not exist in the object.
+     */
+    public function __get($name)
+    {
+        if (!property_exists($this, $name)) {
+            throw new InvalidEntityException();
+        }
+        return $this->$name;
     }
 
 }

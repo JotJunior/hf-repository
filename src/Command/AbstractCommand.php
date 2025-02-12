@@ -24,7 +24,7 @@ class AbstractCommand extends HyperfCommand
         parent::__construct($this->command);
         $this->esClient = $this->container->get(ClientBuilder::class)->build();
         $esConfig = $this->container->get(ConfigInterface::class)->get('hf_elastic');
-        $this->indexPrefix = $esConfig['index_prefix'] ?? '';
+        $this->indexPrefix = $esConfig['prefix'] ?? '';
     }
 
     /**
@@ -254,6 +254,10 @@ class AbstractCommand extends HyperfCommand
                 default:
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: \"$fieldName\",\n";
+                    if (str_ends_with($fieldName, '_identifier')) {
+                        $aliasField = explode('_', $fieldName)[0];
+                        $attributes .= "        description: \"An alias of $aliasField id\",\n";
+                    }
                     $attributes .= "        type: \"string\",\n";
                     $attributes .= (in_array($fieldName, $readOnlyFields) || str_ends_with($fieldName, '_identifier')) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: \"\"\n";
