@@ -13,6 +13,7 @@ use Hyperf\HttpServer\Annotation\RequestMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+
 use function Hyperf\Support\make;
 
 #[SA\HyperfServer('http')]
@@ -33,7 +34,6 @@ use function Hyperf\Support\make;
 #[Controller(prefix: '/{{api_version}}')]
 class {{class_name}}Controller extends AbstractController
 {
-
     #[Inject]
     protected {{class_name}}Repository $repository;
 
@@ -70,7 +70,7 @@ class {{class_name}}Controller extends AbstractController
                 in: 'query',
                 required: false,
                 schema: new SA\Schema(type: 'string', example: 'id,created_at,updated_at')
-            )
+            ),
         ],
         responses: [
             new SA\Response(
@@ -93,7 +93,7 @@ class {{class_name}}Controller extends AbstractController
                             type: 'string',
                             example: null,
                             nullable: true
-                        )
+                        ),
                     ],
                     type: 'object'
                 )
@@ -107,20 +107,20 @@ class {{class_name}}Controller extends AbstractController
                 response: 500,
                 description: 'Application error',
                 content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 10, consume: 1)]
+    #[RateLimit(create: 1, capacity: 5)]
     public function get{{class_name}}sList(): PsrResponseInterface
     {
         $result = $this->repository->paginate($this->request->query());
         if ($result['result'] === 'error') {
             return $this->response->withStatus(400)->json($result);
         }
+
         return $this->response
             ->withHeader('Access-Control-Allow-Origin', '*')
             ->json($result);
-
     }
 
     #[SA\Get(
@@ -135,7 +135,7 @@ class {{class_name}}Controller extends AbstractController
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: '12345')
-            )
+            ),
         ],
         responses: [
             new SA\Response(
@@ -157,7 +157,7 @@ class {{class_name}}Controller extends AbstractController
                             type: 'string',
                             example: 'Invalid request parameters',
                             nullable: true
-                        )
+                        ),
                     ],
                     type: 'object'
                 )
@@ -176,10 +176,10 @@ class {{class_name}}Controller extends AbstractController
                 response: 500,
                 description: 'Application error',
                 content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 10, consume: 1)]
+    #[RateLimit(create: 1, capacity: 5)]
     public function get{{class_name}}Data(string $id): PsrResponseInterface
     {
         $entity = $this->repository->find($id);
@@ -188,7 +188,7 @@ class {{class_name}}Controller extends AbstractController
             return $this->response->withStatus(404)->json([
                 'data' => null,
                 'result' => 'not-found',
-                'error' => 'Document not found'
+                'error' => 'Document not found',
             ]);
         }
 
@@ -223,10 +223,10 @@ class {{class_name}}Controller extends AbstractController
                 response: 500,
                 description: 'Application error',
                 content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 10, consume: 2)]
+    #[RateLimit(create: 1, capacity: 2)]
     public function create{{class_name}}(): PsrResponseInterface
     {
         $entity = make({{class_name}}::class, ['data' => $this->request->all()]);
@@ -256,7 +256,7 @@ class {{class_name}}Controller extends AbstractController
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: '12345')
-            )
+            ),
         ],
         responses: [
             new SA\Response(
@@ -278,10 +278,10 @@ class {{class_name}}Controller extends AbstractController
                 response: 500,
                 description: 'Application error',
                 content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 10, consume: 5)]
+    #[RateLimit(create: 1, capacity: 2)]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
         $entity = make({{class_name}}::class, ['id' => $id, ...$this->request->all()]);
@@ -307,7 +307,7 @@ class {{class_name}}Controller extends AbstractController
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: '12345')
-            )
+            ),
         ],
         responses: [
             new SA\Response(
@@ -330,7 +330,7 @@ class {{class_name}}Controller extends AbstractController
                             type: 'string',
                             example: '{{class_name}} not found',
                             nullable: true
-                        )
+                        ),
                     ],
                     type: 'object'
                 )
@@ -349,10 +349,10 @@ class {{class_name}}Controller extends AbstractController
                 response: 500,
                 description: 'Application error',
                 content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 1, consume: 1)]
+    #[RateLimit(create: 1, capacity: 2)]
     public function delete{{class_name}}(string $id): PsrResponseInterface
     {
         return $this->response->json([
@@ -374,7 +374,7 @@ class {{class_name}}Controller extends AbstractController
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: 'abc1234')
-            )
+            ),
         ],
         responses: [
             new SA\Response(
@@ -386,25 +386,24 @@ class {{class_name}}Controller extends AbstractController
                 response: 404,
                 description: '{{class_name}} not Found',
                 content: null
-            )
+            ),
         ]
     )]
-    #[RateLimit(create: 10, consume: 1)]
+    #[RateLimit(create: 1, capacity: 5)]
     public function check{{class_name}}(string $id): PsrResponseInterface
     {
         return $this->response->withStatus($this->repository->exists($id) ? 204 : 404)->raw('');
     }
 
     #[RequestMapping(path: '/{{api_version}}/{{service_name}}[/[{id}]]', methods: ['OPTIONS'])]
-    #[RateLimit(create: 10, consume: 1)]
+    #[RateLimit(create: 1, capacity: 2)]
     public function requestOptions(): PsrResponseInterface
     {
         return $this->response
             ->withHeader('Access-Control-Allow-Origin', '*')
             ->json([
                 'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
-                'rate_limit' => 'Max 10 requests per second.'
+                'rate_limit' => 'Max 10 requests per second.',
             ]);
     }
-
 }

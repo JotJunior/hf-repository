@@ -160,7 +160,8 @@ class AbstractCommand extends HyperfCommand
 
         $ignoredFields = ['@timestamp', '@version'];
         $readOnlyFields = ['id', 'created_at', 'updated_at', 'deleted', 'removed', '@version', '@timestamp'];
-        $traits = 'use HasLogicRemoval, HasTimestamps;';
+        $traits = "    use HasLogicRemoval;\n";
+        $traits .= "    use HasTimestamps;\n";
 
         if ($isChild) {
             $traits = '';
@@ -184,9 +185,9 @@ class AbstractCommand extends HyperfCommand
                     $phpType = "\\$namespace\\$nestedClassName";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $phpType)), 1);
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        ref: \"#/components/schemas/$docSchema\",\n";
-                    $attributes .= "        x: [\"php_type\" => \"$phpType\"]\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        ref: '#/components/schemas/$docSchema',\n";
+                    $attributes .= "        x: ['php_type' => '$phpType']\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'nested':
@@ -197,36 +198,36 @@ class AbstractCommand extends HyperfCommand
                     $docType = "\\$namespace\\{$nestedClassName}[]";
                     $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"array\",\n";
-                    $attributes .= "        items: new SA\Items(ref: \"#/components/schemas/$docSchema\"),\n";
-                    $attributes .= "        x: [\"php_type\" => \"$docType\"]\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'array',\n";
+                    $attributes .= "        items: new SA\Items(ref: '#/components/schemas/$docSchema'),\n";
+                    $attributes .= "        x: ['php_type' => '$docType']\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'date':
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"string\",\n";
-                    $attributes .= "        format: \"string\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'string',\n";
+                    $attributes .= "        format: 'string',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
-                    $attributes .= "        x: [\"php_type\" => \"\\DateTime\"]\n";
+                    $attributes .= "        x: ['php_type' => '\\DateTime']\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'date_nanos':
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"string\",\n";
-                    $attributes .= "        format: \"string\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'string',\n";
+                    $attributes .= "        format: 'string',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
-                    $attributes .= "        x: [\"php_type\" => \"\\DateTimeImmutable\"]\n";
+                    $attributes .= "        x: ['php_type' => '\\DateTimeImmutable']\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'bool':
                 case 'boolean':
                     $phpType = 'bool';
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"boolean\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'boolean',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: true\n";
                     $attributes .= "    )]\n";
@@ -235,8 +236,8 @@ class AbstractCommand extends HyperfCommand
                 case 'long':
                     $phpType = 'int';
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"integer\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'integer',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: 5\n";
                     $attributes .= "    )]\n";
@@ -244,23 +245,23 @@ class AbstractCommand extends HyperfCommand
                 case 'float':
                 case 'double':
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
-                    $attributes .= "        type: \"number\",\n";
-                    $attributes .= "        format: \"float\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'number',\n";
+                    $attributes .= "        format: 'float',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        example: 123.45\n";
                     $attributes .= "    )]\n";
                     break;
                 default:
                     $attributes .= "    #[SA\Property(\n";
-                    $attributes .= "        property: \"$fieldName\",\n";
+                    $attributes .= "        property: '$fieldName',\n";
                     if (str_ends_with($fieldName, '_identifier')) {
                         $aliasField = explode('_', $fieldName)[0];
-                        $attributes .= "        description: \"An alias of $aliasField id\",\n";
+                        $attributes .= "        description: 'An alias of $aliasField id',\n";
                     }
-                    $attributes .= "        type: \"string\",\n";
+                    $attributes .= "        type: 'string',\n";
                     $attributes .= (in_array($fieldName, $readOnlyFields) || str_ends_with($fieldName, '_identifier')) ? "        readOnly: true,\n" : "";
-                    $attributes .= "        example: \"\"\n";
+                    $attributes .= "        example: ''\n";
                     $attributes .= "    )]\n";
                     break;
             }
@@ -288,7 +289,7 @@ class AbstractCommand extends HyperfCommand
     private function mapElasticTypeToPhpType(string $elasticType): string
     {
         return match ($elasticType) {
-            'date', 'date_nanos' => '\DateTimeInterface',
+            'date', 'date_nanos' => 'DateTimeInterface',
             'long', 'integer', 'short', 'byte' => 'int',
             'double', 'float' => 'float',
             'boolean' => 'bool',
