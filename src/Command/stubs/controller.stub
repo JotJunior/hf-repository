@@ -13,13 +13,16 @@ use Hyperf\HttpServer\Annotation\RequestMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+use Throwable;
 
 #[SA\HyperfServer('http')]
 #[SA\Tag(
     name: '{{class_name}}',
     description: 'Endpoints related to {{service_name}} management'
 )]
-#[SA\Schema(schema: "app.error.response", required: ["result", "error"],
+#[SA\Schema(
+    schema: "app.error.response",
+    required: ["result", "error"],
     properties: [
         new SA\Property(property: "result", type: "string", example: "error"),
         new SA\Property(property: "error", type: "string", example: "Error message"),
@@ -226,17 +229,9 @@ class {{class_name}}Controller extends AbstractController
     #[RateLimit(create: 10, consume: 2)]
     public function create{{class_name}}(): PsrResponseInterface
     {
-        $entity = new {{class_name}}($this->request->all());
+        $entity = make({{class_name}}::class, ['data' => $this->request->all()]);
 
-        try {
-            $response = $this->repository->create($entity);
-        } catch (\Throwable $e) {
-            return $this->response->withStatus(400)->json([
-                'data' => null,
-                'result' => 'error',
-                'error' => $e->getMessage()
-            ]);
-        }
+        $response = $this->repository->create($entity);
 
         return $this->response->withStatus(201)->json([
             'data' => $response->toArray(),
@@ -289,17 +284,9 @@ class {{class_name}}Controller extends AbstractController
     #[RateLimit(create: 10, consume: 5)]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
-        $entity = new {{class_name}}(['id' => $id, ...$this->request->all()]);
+        $entity = make({{class_name}}::class, ['id' => $id, ...$this->request->all()]);
 
-        try {
-            $response = $this->repository->update($entity);
-        } catch (\Throwable $e) {
-            return $this->response->withStatus(400)->json([
-                'data' => null,
-                'result' => 'error',
-                'error' => $e->getMessage()
-            ]);
-        }
+        $response = $this->repository->update($entity);
 
         return $this->response->json([
             'data' => $response->toArray(),
