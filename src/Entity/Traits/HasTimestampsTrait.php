@@ -1,10 +1,10 @@
 <?php
 
-namespace Jot\HfRepository\Trait;
+namespace Jot\HfRepository\Entity\Traits;
 
 use DateTimeInterface;
 
-trait HasTimestamps
+trait HasTimestampsTrait
 {
 
     protected null|DateTimeInterface $createdAt = null;

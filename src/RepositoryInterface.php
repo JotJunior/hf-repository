@@ -2,6 +2,8 @@
 
 namespace Jot\HfRepository;
 
+use Jot\HfRepository\Entity\EntityInterface;
+
 interface RepositoryInterface
 {
 
