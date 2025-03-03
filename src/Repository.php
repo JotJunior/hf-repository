@@ -4,25 +4,35 @@ namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
-use Psr\Container\ContainerInterface;
-use function Hyperf\Support\make;
+use Jot\HfRepository\Query\QueryParserInterface;
 
-
+/**
+ * Abstract Repository class implementing the Repository pattern.
+ *
+ * This class follows the SOLID principles:
+ * - Single Responsibility: Focused on data access operations
+ * - Open/Closed: Extensible through inheritance and composition
+ * - Liskov Substitution: Subclasses can be used interchangeably
+ * - Interface Segregation: Uses specific interfaces for different responsibilities
+ * - Dependency Inversion: Depends on abstractions, not concretions
+ */
 abstract class Repository implements RepositoryInterface
 {
-
     protected string $entity;
     protected string $index;
-    protected QueryBuilder $queryBuilder;
 
-    public function __construct(ContainerInterface $container)
+    public function __construct(
+        protected QueryBuilder           $queryBuilder,
+        protected QueryParserInterface   $queryParser,
+        protected EntityFactoryInterface $entityFactory
+    )
     {
         $this->index = $this->getIndexName();
-        $this->queryBuilder = $container->get(QueryBuilder::class);
     }
 
     /**
@@ -30,19 +40,18 @@ abstract class Repository implements RepositoryInterface
      *
      * @return string The index name in snake_case format.
      */
-    private function getIndexName(): string
+    protected function getIndexName(): string
     {
         $className = explode('\\', get_class($this));
         $indexName = Str::plural(str_replace('Repository', '', end($className)));
         return Str::snake($indexName);
     }
 
-
     /**
      * Finds and retrieves an entity by its ID.
      *
      * @param string $id The unique identifier of the entity.
-     * @return null|EntityInterface|null The hydrated entity if found, or null if not found or an error occurs.
+     * @return null|EntityInterface The hydrated entity if found, or null if not found.
      */
     public function find(string $id): ?EntityInterface
     {
@@ -56,7 +65,49 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return make($this->entity, ['data' => $result['data'][0]]);
+        return $this->entityFactory->create($this->entity, ['data' => $result['data'][0]]);
+    }
+
+    /**
+     * Creates a new entity in the repository after validating the provided entity's data.
+     *
+     * @param EntityInterface $entity The entity instance to be created, which must pass validation.
+     * @return EntityInterface The newly created entity instance populated with the resulting data.
+     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
+     * @throws RepositoryCreateException If an error occurs during the creation process in the repository.
+     */
+    public function create(EntityInterface $entity): EntityInterface
+    {
+        $this->validateEntity($entity);
+
+        $result = $this->queryBuilder
+            ->into($this->index)
+            ->insert($entity->toArray());
+
+        if ($result['result'] !== 'created') {
+            throw new RepositoryCreateException($result['error'] ?? 'Failed to create entity');
+        }
+
+        $createdEntity = $this->entityFactory->create($this->entity, ['data' => $result['data']]);
+
+        if (!$createdEntity instanceof EntityInterface) {
+            throw new RepositoryCreateException('Failed to create entity instance');
+        }
+
+        return $createdEntity;
+    }
+
+    /**
+     * Validates an entity and throws an exception if validation fails.
+     *
+     * @param EntityInterface $entity The entity to validate.
+     * @throws EntityValidationWithErrorsException If validation fails.
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        if (!$entity->validate()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
     }
 
     /**
@@ -67,44 +118,14 @@ abstract class Repository implements RepositoryInterface
      */
     public function first(array $params): ?EntityInterface
     {
-        $result = $this->parseQuery($params)
-            ->limit(1)
-            ->execute();
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+        $result = $query->limit(1)->execute();
 
         if ($result['result'] !== 'success' || empty($result['data'][0])) {
             return null;
         }
 
-        return make($this->entity, ['data' => $result['data'][0]]);
-    }
-
-    /**
-     * Parses query parameters to construct a QueryBuilder object.
-     *
-     * @param array $params The query parameters, which may include optional keys such as '_fields' for selecting specific fields,
-     *                      '_sort' for defining sorting order, and other key-value pairs for filtering conditions.
-     * @return QueryBuilder The constructed QueryBuilder instance reflecting the parsed parameters.
-     */
-    public function parseQuery(array $params): QueryBuilder
-    {
-        $query = $this->queryBuilder->from($this->index);
-
-        $query->select(explode(',', $params['_fields'] ?? '*'));
-
-        if (!empty($params['_sort'])) {
-            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
-            foreach ($sortList as $sort) {
-                $query->orderBy($sort[0], $sort[1] ?? 'asc');
-            }
-        }
-
-        foreach ($params as $key => $value) {
-            if (str_starts_with($key, '_')) {
-                continue;
-            }
-            $query->where($key, '=', $value);
-        }
-        return $query;
+        return $this->entityFactory->create($this->entity, ['data' => $result['data'][0]]);
     }
 
     /**
@@ -116,9 +137,17 @@ abstract class Repository implements RepositoryInterface
      */
     public function search(array $params): array
     {
-        $query = $this->parseQuery($params);
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query->execute();
-        return array_map(fn($item) => make($this->entity, ['data' => $item]), $result['data'] ?? []);
+
+        if (empty($result['data'])) {
+            return [];
+        }
+
+        return array_map(
+            fn($item) => $this->entityFactory->create($this->entity, ['data' => $item]),
+            $result['data']
+        );
     }
 
     /**
@@ -133,49 +162,29 @@ abstract class Repository implements RepositoryInterface
     {
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
-        $result = $this->parseQuery($params)
+
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+        $result = $query
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
-        $result['data'] = array_map(fn($item) => (make($this->entity, ['data' => $item]))->toArray(), $result['data'] ?? []);
+
+        $entities = [];
+        if (!empty($result['data'])) {
+            $entities = array_map(
+                fn($item) => $this->entityFactory->create($this->entity, ['data' => $item])->toArray(),
+                $result['data']
+            );
+        }
+
+        $result['data'] = $entities;
+
         return [
             ...$result,
             'current_page' => (int)$page,
             'per_page' => (int)$perPage,
-            'total' => $this->parseQuery($params)->count()
+            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count()
         ];
-    }
-
-    /**
-     * Creates a new entity in the repository after validating the provided entity's data.
-     *
-     * @param EntityInterface $entity The entity instance to be created, which must pass validation.
-     * @return EntityInterface The newly created entity instance populated with the resulting data.
-     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
-     * @throws RepositoryCreateException If an error occurs during the creation process in the repository.
-     */
-    public function create(EntityInterface $entity): EntityInterface
-    {
-        if (!$entity->validate()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
-
-        $result = $this->queryBuilder
-            ->into($this->index)
-            ->insert($entity->toArray());
-
-        if ($result['result'] !== 'created') {
-            throw new RepositoryCreateException($result['error']);
-        }
-
-        $result = make($this->entity, ['data' => $result['data']]);
-
-        if (!$result instanceof EntityInterface) {
-            throw new RepositoryCreateException($result['error']);
-        }
-
-        return $result;
-
     }
 
     /**
@@ -183,34 +192,34 @@ abstract class Repository implements RepositoryInterface
      *
      * @param EntityInterface $entity The entity to update, containing its identifier and updated data.
      * @return EntityInterface The updated entity after successful modification.
+     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
      * @throws RepositoryUpdateException If the update operation fails or encounters an error.
      */
     public function update(EntityInterface $entity): EntityInterface
     {
-        if (!$entity->validate()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
+        $this->validateEntity($entity);
 
         $result = $this->queryBuilder
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
 
         if (!in_array($result['result'], ['updated', 'noop'])) {
-            throw new RepositoryUpdateException($result['error']);
+            throw new RepositoryUpdateException($result['error'] ?? 'Failed to update entity');
         }
 
-        return make($this->entity, ['data' => $result['data']]);
+        return $this->entityFactory->create($this->entity, ['data' => $result['data']]);
     }
 
     /**
-     * Deletes a record identified by the given ID from the Elasticsearch index.
+     * Deletes a record identified by the given ID from the index.
      *
      * @param string $id The unique identifier of the record to be deleted.
      * @return bool True if the record was successfully deleted, false otherwise.
      */
     public function delete(string $id): bool
     {
-        return in_array($this->queryBuilder->from($this->index)->delete($id)['result'], ['deleted', 'updated', 'noop']);
+        $result = $this->queryBuilder->from($this->index)->delete($id);
+        return in_array($result['result'], ['deleted', 'updated', 'noop']);
     }
 
     /**
@@ -227,17 +236,4 @@ abstract class Repository implements RepositoryInterface
                 ->where('id', '=', $id)
                 ->count() > 0;
     }
-
-    /**
-     * Generates a hash value using the HMAC method with the SHA-256 algorithm.
-     *
-     * @param string $string The input string to be hashed.
-     * @param string $key The secret key used for hashing.
-     * @return string The resulting hash value as a string.
-     */
-    public function createHash(string $string, string $key): string
-    {
-        return hash_hmac('sha256', $string, $key);
-    }
-
 }
