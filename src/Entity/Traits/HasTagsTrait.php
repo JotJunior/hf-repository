@@ -1,8 +1,8 @@
 <?php
 
-namespace Jot\HfRepository\Trait;
+namespace Jot\HfRepository\Entity\Traits;
 
-trait HasTags
+trait HasTagsTrait
 {
 
     protected null|array $tags = null;

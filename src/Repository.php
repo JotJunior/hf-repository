@@ -4,6 +4,7 @@ namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
@@ -77,6 +78,34 @@ abstract class Repository implements RepositoryInterface
         return make($this->entity, ['data' => $result['data'][0]]);
     }
 
+    /**
+     * Parses query parameters to construct a QueryBuilder object.
+     *
+     * @param array $params The query parameters, which may include optional keys such as '_fields' for selecting specific fields,
+     *                      '_sort' for defining sorting order, and other key-value pairs for filtering conditions.
+     * @return QueryBuilder The constructed QueryBuilder instance reflecting the parsed parameters.
+     */
+    public function parseQuery(array $params): QueryBuilder
+    {
+        $query = $this->queryBuilder->from($this->index);
+
+        $query->select(explode(',', $params['_fields'] ?? '*'));
+
+        if (!empty($params['_sort'])) {
+            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
+            foreach ($sortList as $sort) {
+                $query->orderBy($sort[0], $sort[1] ?? 'asc');
+            }
+        }
+
+        foreach ($params as $key => $value) {
+            if (str_starts_with($key, '_')) {
+                continue;
+            }
+            $query->where($key, '=', $value);
+        }
+        return $query;
+    }
 
     /**
      * Executes a search query based on the provided parameters and maps the results
@@ -117,7 +146,6 @@ abstract class Repository implements RepositoryInterface
         ];
     }
 
-
     /**
      * Creates a new entity in the repository after validating the provided entity's data.
      *
@@ -149,7 +177,6 @@ abstract class Repository implements RepositoryInterface
         return $result;
 
     }
-
 
     /**
      * Updates an existing entity in the repository and returns the updated entity.
@@ -184,35 +211,6 @@ abstract class Repository implements RepositoryInterface
     public function delete(string $id): bool
     {
         return in_array($this->queryBuilder->from($this->index)->delete($id)['result'], ['deleted', 'updated', 'noop']);
-    }
-
-    /**
-     * Parses query parameters to construct a QueryBuilder object.
-     *
-     * @param array $params The query parameters, which may include optional keys such as '_fields' for selecting specific fields,
-     *                      '_sort' for defining sorting order, and other key-value pairs for filtering conditions.
-     * @return QueryBuilder The constructed QueryBuilder instance reflecting the parsed parameters.
-     */
-    public function parseQuery(array $params): QueryBuilder
-    {
-        $query = $this->queryBuilder->from($this->index);
-
-        $query->select(explode(',', $params['_fields'] ?? '*'));
-
-        if (!empty($params['_sort'])) {
-            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
-            foreach ($sortList as $sort) {
-                $query->orderBy($sort[0], $sort[1] ?? 'asc');
-            }
-        }
-
-        foreach ($params as $key => $value) {
-            if (str_starts_with($key, '_')) {
-                continue;
-            }
-            $query->where($key, '=', $value);
-        }
-        return $query;
     }
 
     /**
