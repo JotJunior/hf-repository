@@ -3,6 +3,8 @@
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
 use Hyperf\Swagger\Annotation as SA;
+use Jot\HfRepository\Entity\EntityFactory;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\Traits\HydratableTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
@@ -68,6 +70,63 @@ class HydratableTraitTest extends TestCase
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertEquals('Test Name', $this->sut->name);
+    }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testHydrateWithRelatedClassFromAnnotation(): void
+    {
+        // Arrange
+        $data = [
+            'related_entity' => [
+                'id' => 123,
+                'name' => 'Test Related Entity'
+            ]
+        ];
+
+        // Act
+        $result = $this->sut->hydrate($data);
+
+        // Assert
+        $this->assertSame($this->sut, $result);
+        $this->assertInstanceOf(RelatedEntity::class, $this->sut->relatedEntity);
+        $this->assertEquals(123, $this->sut->relatedEntity->id);
+        $this->assertEquals('Test Related Entity', $this->sut->relatedEntity->name);
+    }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testHydrateWithEntityFactory(): void
+    {
+        // Arrange
+        $data = [
+            'related_entity' => [
+                'id' => 456,
+                'name' => 'Factory Created Entity'
+            ]
+        ];
+        
+        // Create a mock EntityFactory
+        $mockEntityFactory = $this->createMock(EntityFactoryInterface::class);
+        $mockEntityFactory->expects($this->once())
+            ->method('create')
+            ->with(
+                $this->equalTo(RelatedEntity::class),
+                $this->equalTo(['id' => 456, 'name' => 'Factory Created Entity'])
+            )
+            ->willReturn(new RelatedEntity(['id' => 456, 'name' => 'Factory Created Entity']));
+        
+        // Set the mock factory
+        $this->sut->setEntityFactory($mockEntityFactory);
+
+        // Act
+        $result = $this->sut->hydrate($data);
+
+        // Assert
+        $this->assertSame($this->sut, $result);
+        $this->assertInstanceOf(RelatedEntity::class, $this->sut->relatedEntity);
+        $this->assertEquals(456, $this->sut->relatedEntity->id);
+        $this->assertEquals('Factory Created Entity', $this->sut->relatedEntity->name);
     }
 
     #[Test]
@@ -334,6 +393,8 @@ class HydratableTraitTestClass
 
     public string $name;
     public string $email;
+    
+    protected ?EntityFactoryInterface $entityFactory = null;
 
     #[SA\Property(x: ['php_type' => RelatedEntity::class])]
     public ?RelatedEntity $relatedEntity = null;
@@ -363,6 +424,33 @@ class HydratableTraitTestClass
     {
         throw new \Exception('Cannot access property');
     }
+    
+    /**
+     * Gets the entity factory used to create related entities.
+     * 
+     * @return EntityFactoryInterface|null The entity factory instance or null if not set
+     */
+    public function getEntityFactory(): ?EntityFactoryInterface
+    {
+        if ($this->entityFactory === null) {
+            // Lazily create a default entity factory if none is set
+            $this->entityFactory = new EntityFactory();
+        }
+        
+        return $this->entityFactory;
+    }
+    
+    /**
+     * Sets the entity factory to use for creating related entities.
+     * 
+     * @param EntityFactoryInterface $entityFactory The entity factory instance
+     * @return self
+     */
+    public function setEntityFactory(EntityFactoryInterface $entityFactory): self
+    {
+        $this->entityFactory = $entityFactory;
+        return $this;
+    }
 }
 
 /**
@@ -372,4 +460,15 @@ class RelatedEntity
 {
     public ?int $id = null;
     public ?string $name = null;
+    
+    public function __construct(array $data = [])
+    {
+        if (isset($data['id'])) {
+            $this->id = $data['id'];
+        }
+        
+        if (isset($data['name'])) {
+            $this->name = $data['name'];
+        }
+    }
 }

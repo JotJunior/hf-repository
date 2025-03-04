@@ -7,7 +7,9 @@ namespace Jot\HfRepository\Entity\Traits;
 use Hyperf\Stringable\Str;
 use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Entity;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitTestClass;
+use function Hyperf\Support\make;
 
 /**
  * Trait that provides hydration functionality.
@@ -33,7 +35,30 @@ trait HydratableTrait
 
             $relatedClass = $this->getRelatedClassFromAttributes($property);
             if (!empty($relatedClass) && class_exists($relatedClass)) {
-                $this->$property = new $relatedClass($value);
+                // Use EntityFactory if available, otherwise fallback to direct instantiation
+                if (method_exists($this, 'getEntityFactory') && $this->getEntityFactory() instanceof EntityFactoryInterface) {
+                    if (is_array($value)) {
+                        $this->$property = $this->getEntityFactory()->create($relatedClass, $value);
+                    } else {
+                        // If value is not an array, create a new instance directly
+                        $this->$property = new $relatedClass();
+                        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
+                            // If the related class has a hydrate method, use it with a simple key-value pair
+                            $this->$property->hydrate(['id' => $value]);
+                        }
+                    }
+                } else {
+                    // Fallback to direct instantiation if no EntityFactory is available
+                    if (is_array($value)) {
+                        $this->$property = new $relatedClass($value);
+                    } else {
+                        $this->$property = new $relatedClass();
+                        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
+                            // If the related class has a hydrate method, use it with a simple key-value pair
+                            $this->$property->hydrate(['id' => $value]);
+                        }
+                    }
+                }
             } else {
                 $this->$property = $value;
             }

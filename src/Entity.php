@@ -18,6 +18,8 @@ use Jot\HfRepository\Entity\Traits\PropertyVisibilityTrait;
 use Jot\HfRepository\Entity\Traits\ValidatableTrait;
 use Jot\HfRepository\Entity\ValidatableInterface;
 use Jot\HfRepository\Exception\InvalidEntityException;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
+use Jot\HfRepository\Entity\EntityFactory;
 
 abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInterface, HashableInterface, PropertyVisibilityInterface, StateAwareInterface, ValidatableInterface
 {
@@ -29,6 +31,7 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     use PropertyVisibilityTrait;
     use ValidatableTrait;
 
+    protected ?EntityFactoryInterface $entityFactory = null;
 
     public function __construct(array $data)
     {
@@ -48,6 +51,33 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
             throw new InvalidEntityException();
         }
         return $this->$name;
+    }
+    
+    /**
+     * Gets the entity factory used to create related entities.
+     * 
+     * @return EntityFactoryInterface|null The entity factory instance or null if not set
+     */
+    public function getEntityFactory(): ?EntityFactoryInterface
+    {
+        if ($this->entityFactory === null) {
+            // Lazily create a default entity factory if none is set
+            $this->entityFactory = new EntityFactory();
+        }
+        
+        return $this->entityFactory;
+    }
+    
+    /**
+     * Sets the entity factory to use for creating related entities.
+     * 
+     * @param EntityFactoryInterface $entityFactory The entity factory instance
+     * @return self
+     */
+    public function setEntityFactory(EntityFactoryInterface $entityFactory): self
+    {
+        $this->entityFactory = $entityFactory;
+        return $this;
     }
 
 
