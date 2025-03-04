@@ -32,6 +32,20 @@ class EntityStateTraitTest extends TestCase
         // Assert
         $this->assertEquals(EntityStateTraitTestClass::STATE_CREATE, $result);
     }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testGetEntityStateReturnsUpdatedState(): void
+    {
+        // Arrange
+        $this->sut->setEntityState(EntityStateTraitTestClass::STATE_UPDATE);
+        
+        // Act
+        $result = $this->sut->getEntityState();
+
+        // Assert
+        $this->assertEquals(EntityStateTraitTestClass::STATE_UPDATE, $result);
+    }
 
     #[Test]
     #[Group('unit')]

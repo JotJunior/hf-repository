@@ -67,11 +67,4 @@ trait ValidatableTrait
         return $this->errors;
     }
     
-    /**
-     * Gets the current entity state.
-     * This method should be implemented by the class using this trait.
-     *
-     * @return string The current entity state.
-     */
-    abstract public function getEntityState(): string;
 }

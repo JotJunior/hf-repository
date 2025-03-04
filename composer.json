@@ -44,10 +44,17 @@
     "jot/hf-validator": "^0.1"
   },
   "require-dev": {
-    "fakerphp/faker": "^1.24"
+    "fakerphp/faker": "^1.24",
+    "phpunit/phpunit": "^10.5"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Jot\\HfRepository\\Tests\\": "tests/"
+    }
   },
   "scripts": {
     "test": "phpunit --testdox",
-    "coverage": "phpunit --testdox --coverage-html=coverage/ --coverage-filter=src/"
+    "coverage": "phpunit --testdox --coverage-html=coverage/ --coverage-filter=src/",
+    "coverage-text": "phpunit --testdox --coverage-text --coverage-filter=src/"
   }
 }

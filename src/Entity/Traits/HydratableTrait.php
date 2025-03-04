@@ -6,8 +6,8 @@ namespace Jot\HfRepository\Entity\Traits;
 
 use Hyperf\Stringable\Str;
 use Hyperf\Swagger\Annotation as SA;
-use Psr\Log\LoggerInterface;
-use function Hyperf\Support\make;
+use Jot\HfRepository\Entity;
+use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitTestClass;
 
 /**
  * Trait that provides hydration functionality.
@@ -19,7 +19,7 @@ trait HydratableTrait
      *
      * @param array $data An associative array where keys represent property names (in snake_case)
      *                    and values are the corresponding values to set.
-     * @return self Returns the current instance with the updated properties.
+     * @return Entity|HydratableTrait|HydratableTraitTestClass Returns the current instance with the updated properties.
      * @throws \ReflectionException
      */
     public function hydrate(array $data): self
@@ -31,22 +31,11 @@ trait HydratableTrait
                 continue;
             }
 
-            try {
-                $relatedClass = $this->getRelatedClassFromAttributes($property);
-                if (!empty($relatedClass) && class_exists($relatedClass)) {
-                    $this->$property = new $relatedClass($value);
-                } else {
-                    $this->$property = $value;
-                }
-            } catch (\Throwable $throwable) {
-                if (isset($this->logger) && $this->logger instanceof LoggerInterface) {
-                    $this->logger->error(sprintf(
-                        '%s[%s] in %s',
-                        $throwable->getMessage(),
-                        $throwable->getLine(),
-                        $throwable->getFile()
-                    ));
-                }
+            $relatedClass = $this->getRelatedClassFromAttributes($property);
+            if (!empty($relatedClass) && class_exists($relatedClass)) {
+                $this->$property = new $relatedClass($value);
+            } else {
+                $this->$property = $value;
             }
         }
 

@@ -38,13 +38,4 @@ trait EntityStateTrait
         return $this;
     }
     
-    /**
-     * Gets the current entity state.
-     *
-     * @return string The current entity state.
-     */
-    protected function getEntityState(): string
-    {
-        return $this->entityState;
-    }
 }

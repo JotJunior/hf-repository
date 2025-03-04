@@ -12,6 +12,7 @@
 .settings/
 .vscode/
 composer.lock
+coverage/
 phpstan.neon
 phpunit.xml
 runtime/
