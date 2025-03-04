@@ -42,7 +42,7 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
      * @return mixed The value of the requested property.
      * @throws InvalidEntityException If the property does not exist in the object.
      */
-    public function __get($name)
+    public function __get(string $name): mixed
     {
         if (!property_exists($this, $name)) {
             throw new InvalidEntityException();

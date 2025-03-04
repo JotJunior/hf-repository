@@ -31,7 +31,7 @@ trait ValidatableTrait
      */
     public function addValidator(string $property, ValidatorInterface $validator): void
     {
-        $this->validators[$property] = $validator;
+        $this->validators[$property][] = $validator;
     }
     
     /**
@@ -41,13 +41,14 @@ trait ValidatableTrait
      */
     public function validate(): bool
     {
-        foreach (ValidatorChain::list(get_class($this)) as $property => $validators) {
+        $this->errors = [];
+        
+        // First validate the validators added directly to the entity
+        foreach ($this->validators as $property => $validators) {
             foreach ($validators as $validator) {
-                $isValid = $this->getEntityState() === self::STATE_UPDATE
-                    ? $validator->onUpdate()->validate($this->$property)
-                    : $validator->validate($this->$property);
-                    
-                if ($validator && !$isValid) {
+                $isValid = $validator->validate($this->$property);
+                
+                if (!$isValid) {
                     $this->errors[$property] = $validator->consumeErrors();
                 }
             }
@@ -72,5 +73,5 @@ trait ValidatableTrait
      *
      * @return string The current entity state.
      */
-    abstract protected function getEntityState(): string;
+    abstract public function getEntityState(): string;
 }

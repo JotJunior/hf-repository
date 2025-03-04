@@ -33,4 +33,5 @@ interface ValidatableInterface
      * @return array An array containing the validation errors.
      */
     public function getErrors(): array;
+
 }
