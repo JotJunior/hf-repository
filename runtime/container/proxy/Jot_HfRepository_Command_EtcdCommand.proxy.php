@@ -1,0 +1,45 @@
+<?php
+
+declare (strict_types=1);
+namespace Jot\HfRepository\Command;
+
+use Hyperf\Command\Annotation\Command;
+use Hyperf\Command\Command as HyperfCommand;
+use Hyperf\Contract\ConfigInterface;
+use Hyperf\Di\Annotation\Inject;
+use Hyperf\Etcd\KVInterface;
+use Psr\Container\ContainerInterface;
+#[Command]
+class EtcdCommand extends HyperfCommand
+{
+    use \Hyperf\Di\Aop\ProxyTrait;
+    use \Hyperf\Di\Aop\PropertyHandlerTrait;
+    #[Inject]
+    protected ConfigInterface $config;
+    #[Inject]
+    protected KVInterface $etcd;
+    public function __construct(protected ContainerInterface $container)
+    {
+        $this->__handlePropertyHandler(__CLASS__);
+        parent::__construct('etcd:put');
+    }
+    public function configure()
+    {
+        parent::configure();
+        $this->setDescription('Publish local configuration to ETCD');
+        $this->setHelp('This command is used to publish local configuration to ETCD');
+        $this->addArgument('config-key', null, 'The key of the ETCD client');
+    }
+    public function handle()
+    {
+        $configKey = $this->input->getArgument('config-key');
+        $etcdKey = sprintf('/application/%s', $configKey);
+        $etcdData = $this->etcd->get($etcdKey);
+        $etcdKeyExists = !empty($etcdData['kvs'][0]['value']);
+        if ($etcdKeyExists && 'y' !== $this->ask('The key already exists, do you want to overwrite it? [y/N]', 'N')) {
+            $this->line('Aborted.');
+            return;
+        }
+        $this->etcd->put($etcdKey, json_encode($this->config->get($configKey), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+}

@@ -1,0 +1,154 @@
+project_settings:
+  test_framework: "PHPUnit"
+  php_version: "8.2"
+  base_namespace: "Jot\\HfRepository\\"
+  source_dir: "src/"
+  test_dir: "tests/"
+
+naming_conventions:
+  test_class_suffix: "Test"
+  test_method_prefix: "test"
+  data_provider_prefix: "provide"
+  test_file_pattern: "{Classname}Test.php"
+
+organization_rules:
+  directory_structure:
+    mirror_source: true
+    example:
+      source: "src/Domain/User/UserService.php"
+      test: "tests/Domain/User/UserServiceTest.php"
+
+  method_structure:
+    format: |
+      /**
+       * @test
+       * @group {group}
+       * @covers {class}::{method}
+       */
+      public function {testName}(): void
+      {
+          // Arrange
+          // Act
+          // Assert
+      }
+
+mocking_rules:
+  framework: "PHPUnit"
+  preferred_method: "createMock"
+  naming_pattern: "$mock{Classname}"
+  mock_methods:
+    - pattern: "get*"
+      return_style: "single_value"
+    - pattern: "find*"
+      return_style: "nullable"
+    - pattern: "list*"
+      return_style: "collection"
+  stub_conventions:
+    data_providers: true
+    fake_data_generation: "Faker\\Factory"
+    datetime_format: "Y-m-d H:i:s"
+
+assertion_rules:
+  exception_testing:
+    required: true
+    pattern: |
+      $this->expectException({ExceptionClass}::class);
+      $this->expectExceptionMessage('{message}');
+
+  collection_testing:
+    count_assertion: true
+    type_assertion: true
+    content_assertion: true
+
+documentation_rules:
+  required_sections:
+    - "What is being tested"
+    - "Conditions/Scenarios"
+    - "Expected results"
+
+  docblock_template: |
+    /**
+     * @test
+     * @covers {class}::{method}
+     * @group {group}
+     * @dataProvider {dataProviderName}
+     *
+     * Test that {description}
+     *
+     * @param {parameterType} $parameter
+     * @return void
+     */
+
+test_groups:
+  - unit
+  - integration
+  - feature
+  - slow
+  - critical
+
+coverage_requirements:
+  minimum_coverage: 80
+
+validation_rules:
+  forbidden_practices:
+    - "sleep()"
+    - "die()"
+    - "exit()"
+  required_assertions: true
+  max_method_length: 50
+  max_test_complexity: 5
+
+templates:
+  basic_test: |
+    <?php
+    
+    declare(strict_types=1);
+    
+    namespace {namespace};
+    
+    use PHPUnit\Framework\TestCase;
+    use {tested_class_namespace}\{tested_class};
+    
+    /**
+     * @covers \{tested_class_namespace}\{tested_class}
+     */
+    class {test_class_name} extends TestCase
+    {
+        private {tested_class} $sut;
+    
+        protected function setUp(): void
+        {
+            parent::setUp();
+            $this->sut = new {tested_class}();
+        }
+    }
+
+  data_provider: |
+    /**
+     * @return array<string, array<mixed>>
+     */
+    public function provide{scenarioName}(): array
+    {
+        return [
+            'scenario_description' => [
+                'input' => value,
+                'expected' => value,
+            ],
+        ];
+    }
+
+common_snippets:
+  mock_repository: |
+    $repository = $this->createMock({RepositoryInterface}::class);
+    $repository
+        ->method('{method}')
+        ->with({parameters})
+        ->willReturn({return_value});
+
+  assertion_collection: |
+    $this->assertCount({expected_count}, $result);
+    $this->assertContainsOnlyInstancesOf({expected_class}::class, $result);
+
+  exception_test: |
+    $this->expectException({ExceptionClass}::class);
+    $this->expectExceptionMessage('{message}');

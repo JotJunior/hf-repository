@@ -16,7 +16,7 @@
 
     <testsuites>
         <testsuite name="Default">
-            <directory>tests/Repository</directory>
+            <directory>tests/Entity</directory>
         </testsuite>
     </testsuites>
 </phpunit>

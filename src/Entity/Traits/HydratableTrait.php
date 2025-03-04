@@ -34,7 +34,7 @@ trait HydratableTrait
             try {
                 $relatedClass = $this->getRelatedClassFromAttributes($property);
                 if (!empty($relatedClass) && class_exists($relatedClass)) {
-                    $this->$property = make($relatedClass, ['data' => $value]);
+                    $this->$property = new $relatedClass($value);
                 } else {
                     $this->$property = $value;
                 }
