@@ -52,6 +52,25 @@ class EntityFactoryTest extends TestCase
         $this->assertEquals(456, $entity->id);
         $this->assertEquals('Invoked Entity', $entity->name);
     }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testCreateWithIndividualParameters(): void
+    {
+        // Arrange
+        $data = [
+            'id' => 789,
+            'name' => 'Individual Params Entity'
+        ];
+
+        // Act - this will use the non-array constructor path
+        $entity = $this->sut->create(TestEntityWithIndividualParams::class, $data);
+
+        // Assert
+        $this->assertInstanceOf(TestEntityWithIndividualParams::class, $entity);
+        $this->assertEquals(789, $entity->id);
+        $this->assertEquals('Individual Params Entity', $entity->name);
+    }
 
     protected function setUp(): void
     {
@@ -77,5 +96,23 @@ class TestEntity
         if (isset($data['name'])) {
             $this->name = $data['name'];
         }
+    }
+}
+
+/**
+ * Entity class with individual constructor parameters for testing
+ */
+class TestEntityWithIndividualParams
+{
+    public ?int $id = null;
+    public ?string $name = null;
+    
+    /**
+     * Constructor that accepts individual parameters instead of an array
+     */
+    public function __construct($id = null, $name = null)
+    {
+        $this->id = $id;
+        $this->name = $name;
     }
 }

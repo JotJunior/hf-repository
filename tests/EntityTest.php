@@ -6,6 +6,8 @@ namespace Jot\HfRepository\Tests;
 
 use Hyperf\Stringable\Str;
 use Jot\HfRepository\Entity;
+use Jot\HfRepository\Entity\EntityFactory;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\InvalidEntityException;
 use Jot\HfValidator\ValidatorChain;
@@ -80,18 +82,15 @@ class EntityTest extends TestCase
     #[Group('unit')]
     public function testSetAndGetEntityState(): void
     {
-        // Arrange
-        $reflectionClass = new \ReflectionClass($this->sut);
-        $method = $reflectionClass->getMethod('getEntityState');
-        $method->setAccessible(true);
+        // Arrange - default state should be STATE_CREATE
+        $this->assertEquals(Entity::STATE_CREATE, $this->sut->getEntityStateForTest());
         
         // Act
         $result = $this->sut->setEntityState(Entity::STATE_UPDATE);
-        $state = $method->invoke($this->sut);
         
         // Assert
         $this->assertSame($this->sut, $result);
-        $this->assertEquals(Entity::STATE_UPDATE, $state);
+        $this->assertEquals(Entity::STATE_UPDATE, $this->sut->getEntityStateForTest());
     }
 
     #[Test]
@@ -294,6 +293,34 @@ class EntityTest extends TestCase
         $this->assertArrayHasKey('created_at', $result);
         $this->assertEquals($now->format(DATE_ATOM), $result['created_at']);
     }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testGetEntityFactoryCreatesDefaultFactory(): void
+    {
+        // Act
+        $factory = $this->sut->getEntityFactory();
+        
+        // Assert
+        $this->assertInstanceOf(EntityFactoryInterface::class, $factory);
+        $this->assertInstanceOf(EntityFactory::class, $factory);
+    }
+    
+    #[Test]
+    #[Group('unit')]
+    public function testSetEntityFactory(): void
+    {
+        // Arrange
+        $mockFactory = $this->createMock(EntityFactoryInterface::class);
+        
+        // Act
+        $result = $this->sut->setEntityFactory($mockFactory);
+        $factory = $this->sut->getEntityFactory();
+        
+        // Assert
+        $this->assertSame($this->sut, $result);
+        $this->assertSame($mockFactory, $factory);
+    }
 }
 
 /**
@@ -303,6 +330,14 @@ class TestEntity extends Entity
 {
     protected string $name;
     protected string $email;
+    
+    /**
+     * Get the entity state (for testing purposes)
+     */
+    public function getEntityStateForTest(): string
+    {
+        return $this->entityState;
+    }
 }
 
 /**
