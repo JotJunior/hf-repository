@@ -21,13 +21,5 @@ interface EntityFactoryInterface
      * @return mixed The created entity instance
      */
     public function create(string $entityClass, array $data);
-    
-    /**
-     * Makes the factory invocable, allowing it to be used as a function.
-     * 
-     * @param string $entityClass The fully qualified class name of the entity to create
-     * @param array $data The data to initialize the entity with
-     * @return mixed The created entity instance
-     */
-    public function __invoke(string $entityClass, array $data);
+
 }
