@@ -3,7 +3,7 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Adapter\QueryBuilderAdapter;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
@@ -25,14 +25,16 @@ abstract class Repository implements RepositoryInterface
 {
     protected string $entity;
     protected string $index;
+    protected QueryBuilderAdapter $queryBuilderAdapter;
 
     public function __construct(
-        protected QueryBuilder           $queryBuilder,
+        QueryBuilderAdapter              $queryBuilderAdapter,
         protected QueryParserInterface   $queryParser,
         protected EntityFactoryInterface $entityFactory
     )
     {
         $this->index = $this->getIndexName();
+        $this->queryBuilderAdapter = $queryBuilderAdapter;
     }
 
     /**
@@ -55,7 +57,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function find(string $id): ?EntityInterface
     {
-        $result = $this->queryBuilder
+        $result = $this->queryBuilderAdapter
             ->select()
             ->from($this->index)
             ->where('id', '=', $id)
@@ -80,7 +82,7 @@ abstract class Repository implements RepositoryInterface
     {
         $this->validateEntity($entity);
 
-        $result = $this->queryBuilder
+        $result = $this->queryBuilderAdapter
             ->into($this->index)
             ->insert($entity->toArray());
 
@@ -118,7 +120,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function first(array $params): ?EntityInterface
     {
-        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
         $result = $query->limit(1)->execute();
 
         if ($result['result'] !== 'success' || empty($result['data'][0])) {
@@ -137,7 +139,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function search(array $params): array
     {
-        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
         $result = $query->execute();
 
         if (empty($result['data'])) {
@@ -163,7 +165,7 @@ abstract class Repository implements RepositoryInterface
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
 
-        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
         $result = $query
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
@@ -183,7 +185,7 @@ abstract class Repository implements RepositoryInterface
             ...$result,
             'current_page' => (int)$page,
             'per_page' => (int)$perPage,
-            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count()
+            'total' => $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index))->count()
         ];
     }
 
@@ -199,7 +201,7 @@ abstract class Repository implements RepositoryInterface
     {
         $this->validateEntity($entity);
 
-        $result = $this->queryBuilder
+        $result = $this->queryBuilderAdapter
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
 
@@ -218,7 +220,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): bool
     {
-        $result = $this->queryBuilder->from($this->index)->delete($id);
+        $result = $this->queryBuilderAdapter->from($this->index)->delete($id);
         return in_array($result['result'], ['deleted', 'updated', 'noop']);
     }
 
@@ -230,7 +232,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function exists(string $id): bool
     {
-        return $this->queryBuilder
+        return $this->queryBuilderAdapter
                 ->select()
                 ->from($this->index)
                 ->where('id', '=', $id)
