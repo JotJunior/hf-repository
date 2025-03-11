@@ -7,7 +7,11 @@ use Jot\HfRepository\Command\GenerateControllerCommand;
 use Jot\HfRepository\Command\GenerateCrudCommand;
 use Jot\HfRepository\Command\GenerateRepositoryCommand;
 use Jot\HfRepository\Command\GenerateEntityCommand;
+use Jot\HfRepository\Entity\EntityFactory;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Exception\Handler\ControllerExceptionHandler;
+use Jot\HfRepository\Query\QueryParser;
+use Jot\HfRepository\Query\QueryParserInterface;
 use Jot\HfRepository\Swagger\SwaggerHttpServer;
 
 class ConfigProvider
@@ -16,7 +20,9 @@ class ConfigProvider
     {
         return [
             'dependencies' => [
-                HttpServer::class => SwaggerHttpServer::class
+                HttpServer::class => SwaggerHttpServer::class,
+                QueryParserInterface::class => QueryParser::class,
+                EntityFactoryInterface::class => EntityFactory::class
             ],
             'commands' => [
                 GenerateControllerCommand::class,
