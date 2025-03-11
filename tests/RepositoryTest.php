@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository\Tests;
 
 use Hyperf\Stringable\Str;
-use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Adapter\QueryBuilderAdapter;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 class RepositoryTest extends TestCase
 {
     private TestRepository $sut;
-    private QueryBuilder $queryBuilder;
+    private QueryBuilderAdapter $queryBuilderAdapter;
     private QueryParserInterface $queryParser;
     private EntityFactoryInterface $entityFactory;
     private RepositoryTestEntity $testEntity;
@@ -31,13 +31,13 @@ class RepositoryTest extends TestCase
     {
         parent::setUp();
         
-        $this->queryBuilder = $this->createMock(QueryBuilder::class);
+        $this->queryBuilderAdapter = $this->createMock(QueryBuilderAdapter::class);
         $this->queryParser = $this->createMock(QueryParserInterface::class);
         $this->entityFactory = $this->createMock(EntityFactoryInterface::class);
         $this->testEntity = $this->createMock(RepositoryTestEntity::class);
         
         $this->sut = new TestRepository(
-            $this->queryBuilder,
+            $this->queryBuilderAdapter,
             $this->queryParser,
             $this->entityFactory
         );
@@ -67,16 +67,19 @@ class RepositoryTest extends TestCase
         $id = 'test-id-123';
         $entityData = ['id' => $id, 'name' => 'Test Entity'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('select')->willReturnSelf();
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('where')->willReturnSelf();
-        $queryMock->method('execute')->willReturn([
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('select')->willReturnSelf();
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->method('where')->willReturnSelf();
+        $queryBuilderAdapterMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => [$entityData]
         ]);
         
-        $this->queryBuilder->method('select')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         $this->entityFactory->method('create')
             ->with($this->equalTo(RepositoryTestEntity::class), $this->equalTo(['data' => $entityData]))
@@ -96,16 +99,19 @@ class RepositoryTest extends TestCase
         // Arrange
         $id = 'non-existent-id';
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('select')->willReturnSelf();
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('where')->willReturnSelf();
-        $queryMock->method('execute')->willReturn([
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('select')->willReturnSelf();
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->method('where')->willReturnSelf();
+        $queryBuilderAdapterMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => []
         ]);
         
-        $this->queryBuilder->method('select')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Act
         $result = $this->sut->find($id);
@@ -125,14 +131,20 @@ class RepositoryTest extends TestCase
         $this->testEntity->method('toArray')->willReturn($entityData);
         $this->testEntity->method('validate')->willReturn(true);
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('into')->willReturnSelf();
-        $queryMock->method('insert')->willReturn([
-            'result' => 'created',
-            'data' => $resultData
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('into')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('insert')
+            ->with($this->equalTo($entityData))
+            ->willReturn([
+                'result' => 'created',
+                'data' => $resultData
+            ]);
         
-        $this->queryBuilder->method('into')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         $createdEntity = $this->createMock(RepositoryTestEntity::class);
         $this->entityFactory->method('create')
@@ -172,14 +184,20 @@ class RepositoryTest extends TestCase
         $this->testEntity->method('toArray')->willReturn($entityData);
         $this->testEntity->method('validate')->willReturn(true);
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('into')->willReturnSelf();
-        $queryMock->method('insert')->willReturn([
-            'result' => 'error',
-            'error' => 'Database connection failed'
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('into')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('insert')
+            ->with($this->equalTo($entityData))
+            ->willReturn([
+                'result' => 'error',
+                'error' => 'Database connection failed'
+            ]);
         
-        $this->queryBuilder->method('into')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Assert
         $this->expectException(RepositoryCreateException::class);
@@ -196,14 +214,21 @@ class RepositoryTest extends TestCase
         $params = ['name' => 'Test'];
         $entityData = ['id' => 'test-id', 'name' => 'Test Entity'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('limit')->willReturnSelf();
         $queryMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => [$entityData]
         ]);
         
-        $this->queryBuilder->method('from')->willReturnSelf();
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
+        
         $this->queryParser->method('parse')->willReturn($queryMock);
         
         $this->entityFactory->method('create')
@@ -224,14 +249,21 @@ class RepositoryTest extends TestCase
         // Arrange
         $params = ['name' => 'NonExistent'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('limit')->willReturnSelf();
         $queryMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => []
         ]);
         
-        $this->queryBuilder->method('from')->willReturnSelf();
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
+        
         $this->queryParser->method('parse')->willReturn($queryMock);
         
         // Act
@@ -250,13 +282,13 @@ class RepositoryTest extends TestCase
         $entityData1 = ['id' => 'test-id-1', 'name' => 'Test Entity 1'];
         $entityData2 = ['id' => 'test-id-2', 'name' => 'Test Entity 2'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => [$entityData1, $entityData2]
         ]);
         
-        $this->queryBuilder->method('from')->willReturnSelf();
+        $this->queryBuilderAdapter->method('from')->willReturnSelf();
         $this->queryParser->method('parse')->willReturn($queryMock);
         
         $entity1 = $this->createMock(RepositoryTestEntity::class);
@@ -285,13 +317,13 @@ class RepositoryTest extends TestCase
         // Arrange
         $params = ['name' => 'NonExistent'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('execute')->willReturn([
             'result' => 'success',
             'data' => []
         ]);
         
-        $this->queryBuilder->method('from')->willReturnSelf();
+        $this->queryBuilderAdapter->method('from')->willReturnSelf();
         $this->queryParser->method('parse')->willReturn($queryMock);
         
         // Act
@@ -312,7 +344,7 @@ class RepositoryTest extends TestCase
         $entityData1 = ['id' => 'test-id-1', 'name' => 'Test Entity 1'];
         $entityData2 = ['id' => 'test-id-2', 'name' => 'Test Entity 2'];
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('limit')->willReturnSelf();
         $queryMock->method('offset')->willReturnSelf();
         $queryMock->method('execute')->willReturn([
@@ -321,7 +353,7 @@ class RepositoryTest extends TestCase
         ]);
         $queryMock->method('count')->willReturn(15); // Total count
         
-        $this->queryBuilder->method('from')->willReturnSelf();
+        $this->queryBuilderAdapter->method('from')->willReturnSelf();
         $this->queryParser->method('parse')->willReturn($queryMock);
         
         $entity1 = $this->createMock(RepositoryTestEntity::class);
@@ -362,14 +394,20 @@ class RepositoryTest extends TestCase
         $this->testEntity->method('validate')->willReturn(true);
         $this->testEntity->method('getId')->willReturn($id);
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('update')->willReturn([
-            'result' => 'updated',
-            'data' => $resultData
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('update')
+            ->with($id, $this->equalTo($entityData))
+            ->willReturn([
+                'result' => 'updated',
+                'data' => $resultData
+            ]);
         
-        $this->queryBuilder->method('from')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         $updatedEntity = $this->createMock(RepositoryTestEntity::class);
         $this->entityFactory->method('create')
@@ -411,14 +449,20 @@ class RepositoryTest extends TestCase
         $this->testEntity->method('validate')->willReturn(true);
         $this->testEntity->method('getId')->willReturn($id);
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('update')->willReturn([
-            'result' => 'error',
-            'error' => 'Database connection failed'
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('update')
+            ->with($id, $this->equalTo($entityData))
+            ->willReturn([
+                'result' => 'error',
+                'error' => 'Database connection failed'
+            ]);
         
-        $this->queryBuilder->method('from')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Assert
         $this->expectException(RepositoryUpdateException::class);
@@ -434,13 +478,19 @@ class RepositoryTest extends TestCase
         // Arrange
         $id = 'test-id-123';
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('delete')->willReturn([
-            'result' => 'deleted'
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('delete')
+            ->with($id)
+            ->willReturn([
+                'result' => 'deleted'
+            ]);
         
-        $this->queryBuilder->method('from')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Act
         $result = $this->sut->delete($id);
@@ -456,13 +506,19 @@ class RepositoryTest extends TestCase
         // Arrange
         $id = 'test-id-123';
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('delete')->willReturn([
-            'result' => 'error'
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderAdapterMock->expects($this->once())
+            ->method('delete')
+            ->with($id)
+            ->willReturn([
+                'result' => 'error'
+            ]);
         
-        $this->queryBuilder->method('from')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Act
         $result = $this->sut->delete($id);
@@ -478,13 +534,16 @@ class RepositoryTest extends TestCase
         // Arrange
         $id = 'test-id-123';
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('select')->willReturnSelf();
         $queryMock->method('from')->willReturnSelf();
         $queryMock->method('where')->willReturnSelf();
         $queryMock->method('count')->willReturn(1);
         
-        $this->queryBuilder->method('select')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryMock);
         
         // Act
         $result = $this->sut->exists($id);
@@ -500,13 +559,16 @@ class RepositoryTest extends TestCase
         // Arrange
         $id = 'non-existent-id';
         
-        $queryMock = $this->createMock(QueryBuilder::class);
+        $queryMock = $this->createMock(QueryBuilderAdapter::class);
         $queryMock->method('select')->willReturnSelf();
         $queryMock->method('from')->willReturnSelf();
         $queryMock->method('where')->willReturnSelf();
         $queryMock->method('count')->willReturn(0);
         
-        $this->queryBuilder->method('select')->willReturn($queryMock);
+        // Substituir o adaptador no repositório
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryMock);
         
         // Act
         $result = $this->sut->exists($id);

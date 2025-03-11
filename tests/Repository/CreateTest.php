@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository\Tests\Repository;
 
 use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Adapter\QueryBuilderAdapter;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\RepositoryCreateException;
@@ -19,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 class CreateTest extends TestCase
 {
     private TestRepository $sut;
-    private QueryBuilder $queryBuilder;
+    private QueryBuilderAdapter $queryBuilderAdapter;
     private QueryParserInterface $queryParser;
     private EntityFactoryInterface $entityFactory;
     private TestEntity $testEntity;
@@ -28,13 +29,13 @@ class CreateTest extends TestCase
     {
         parent::setUp();
         
-        $this->queryBuilder = $this->createMock(QueryBuilder::class);
+        $this->queryBuilderAdapter = $this->createMock(QueryBuilderAdapter::class);
         $this->queryParser = $this->createMock(QueryParserInterface::class);
         $this->entityFactory = $this->createMock(EntityFactoryInterface::class);
         $this->testEntity = $this->createMock(TestEntity::class);
         
         $this->sut = new TestRepository(
-            $this->queryBuilder,
+            $this->queryBuilderAdapter,
             $this->queryParser,
             $this->entityFactory
         );
@@ -51,14 +52,19 @@ class CreateTest extends TestCase
         $this->testEntity->method('toArray')->willReturn($entityData);
         $this->testEntity->method('validate')->willReturn(true);
         
-        $queryMock = $this->createMock(QueryBuilder::class);
-        $queryMock->method('into')->willReturnSelf();
-        $queryMock->method('insert')->willReturn([
-            'result' => 'created',
-            'data' => $resultData
-        ]);
+        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
+        $queryBuilderAdapterMock->method('into')->willReturnSelf();
+        $queryBuilderAdapterMock->method('insert')
+            ->with($this->equalTo($entityData))
+            ->willReturn([
+                'result' => 'created',
+                'data' => $resultData
+            ]);
         
-        $this->queryBuilder->method('into')->willReturn($queryMock);
+        // Substituir o adaptador no repositu00f3rio
+        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
         
         // Return a non-entity object
         $nonEntity = new \stdClass();

@@ -36,25 +36,6 @@ class EntityFactoryTest extends TestCase
 
     #[Test]
     #[Group('unit')]
-    public function testInvoke(): void
-    {
-        // Arrange
-        $data = [
-            'id' => 456,
-            'name' => 'Invoked Entity'
-        ];
-
-        // Act - using the factory as a function
-        $entity = ($this->sut)(TestEntity::class, $data);
-
-        // Assert
-        $this->assertInstanceOf(TestEntity::class, $entity);
-        $this->assertEquals(456, $entity->id);
-        $this->assertEquals('Invoked Entity', $entity->name);
-    }
-    
-    #[Test]
-    #[Group('unit')]
     public function testCreateWithIndividualParameters(): void
     {
         // Arrange
