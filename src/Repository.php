@@ -3,13 +3,13 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use Jot\HfElastic\QueryBuilder;
-use Jot\HfRepository\Entity\EntityFactory;
+use Jot\HfElastic\Contracts\QueryBuilderInterface;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
-use Jot\HfRepository\Query\QueryParser;
+use Jot\HfRepository\Query\QueryParserInterface;
 
 /**
  * Abstract Repository class implementing the Repository pattern.
@@ -27,9 +27,9 @@ abstract class Repository implements RepositoryInterface
     protected string $index;
 
     public function __construct(
-        protected QueryBuilder  $queryBuilder,
-        protected QueryParser   $queryParser,
-        protected EntityFactory $entityFactory
+        protected QueryBuilderInterface  $queryBuilder,
+        protected QueryParserInterface   $queryParser,
+        protected EntityFactoryInterface $entityFactory
     )
     {
         $this->index = $this->getIndexName();
@@ -52,7 +52,6 @@ abstract class Repository implements RepositoryInterface
      *
      * @param string $id The unique identifier of the entity.
      * @return null|EntityInterface The hydrated entity if found, or null if not found.
-     * @throws \ReflectionException
      */
     public function find(string $id): ?EntityInterface
     {
