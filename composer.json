@@ -35,13 +35,13 @@
     "php": ">=8.2",
     "hyperf/command": "~3.1.0",
     "hyperf/di": "~3.1.0",
-    "hyperf/swagger": "^3.1",
-    "jot/hf-elastic": "^0.17",
-    "zircote/swagger-php": "^4.11",
+    "hyperf/http-server": "^3.1",
     "hyperf/rate-limit": "^3.1",
     "hyperf/redis": "^3.1",
-    "hyperf/http-server": "^3.1",
-    "jot/hf-validator": "^0.1"
+    "hyperf/swagger": "^3.1",
+    "jot/hf-elastic": "^0.17",
+    "jot/hf-validator": "^0.1",
+    "zircote/swagger-php": "^4.11"
   },
   "require-dev": {
     "fakerphp/faker": "^1.24",
@@ -53,8 +53,10 @@
     }
   },
   "scripts": {
-    "test": "phpunit --testdox",
-    "coverage": "phpunit --testdox --coverage-html=coverage/ --coverage-filter=src/",
-    "coverage-text": "phpunit --testdox --coverage-text --coverage-filter=src/"
+    "test": "phpunit",
+    "test-dox": "phpunit --testdox",
+    "test-coverage": "phpunit --testdox --coverage-html=coverage/ --coverage-filter=src/",
+    "test-coverage-text": "phpunit --testdox --coverage-text --coverage-filter=src/",
+    "test-coverage-clover": "phpunit --testdox --coverage-clover coverage.xml --coverage-filter=src/"
   }
 }

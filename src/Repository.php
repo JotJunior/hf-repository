@@ -3,13 +3,13 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Stringable\Str;
-use Jot\HfRepository\Adapter\QueryBuilderAdapter;
-use Jot\HfRepository\Entity\EntityFactoryInterface;
+use Jot\HfElastic\QueryBuilder;
+use Jot\HfRepository\Entity\EntityFactory;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
-use Jot\HfRepository\Query\QueryParserInterface;
+use Jot\HfRepository\Query\QueryParser;
 
 /**
  * Abstract Repository class implementing the Repository pattern.
@@ -25,16 +25,14 @@ abstract class Repository implements RepositoryInterface
 {
     protected string $entity;
     protected string $index;
-    protected QueryBuilderAdapter $queryBuilderAdapter;
 
     public function __construct(
-        QueryBuilderAdapter              $queryBuilderAdapter,
-        protected QueryParserInterface   $queryParser,
-        protected EntityFactoryInterface $entityFactory
+        protected QueryBuilder  $queryBuilder,
+        protected QueryParser   $queryParser,
+        protected EntityFactory $entityFactory
     )
     {
         $this->index = $this->getIndexName();
-        $this->queryBuilderAdapter = $queryBuilderAdapter;
     }
 
     /**
@@ -54,10 +52,11 @@ abstract class Repository implements RepositoryInterface
      *
      * @param string $id The unique identifier of the entity.
      * @return null|EntityInterface The hydrated entity if found, or null if not found.
+     * @throws \ReflectionException
      */
     public function find(string $id): ?EntityInterface
     {
-        $result = $this->queryBuilderAdapter
+        $result = $this->queryBuilder
             ->select()
             ->from($this->index)
             ->where('id', '=', $id)
@@ -75,14 +74,15 @@ abstract class Repository implements RepositoryInterface
      *
      * @param EntityInterface $entity The entity instance to be created, which must pass validation.
      * @return EntityInterface The newly created entity instance populated with the resulting data.
-     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
-     * @throws RepositoryCreateException If an error occurs during the creation process in the repository.
+     * @throws EntityValidationWithErrorsException
+     * @throws RepositoryCreateException
+     * @throws \ReflectionException
      */
     public function create(EntityInterface $entity): EntityInterface
     {
         $this->validateEntity($entity);
 
-        $result = $this->queryBuilderAdapter
+        $result = $this->queryBuilder
             ->into($this->index)
             ->insert($entity->toArray());
 
@@ -117,10 +117,11 @@ abstract class Repository implements RepositoryInterface
      *
      * @param array $params An associative array of query parameters used to filter the entities.
      * @return null|EntityInterface The hydrated entity instance corresponding to the first match.
+     * @throws \ReflectionException
      */
     public function first(array $params): ?EntityInterface
     {
-        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query->limit(1)->execute();
 
         if ($result['result'] !== 'success' || empty($result['data'][0])) {
@@ -136,10 +137,11 @@ abstract class Repository implements RepositoryInterface
      *
      * @param array $params An associative array containing the parameters for the search query.
      * @return array An array of entity instances resulting from the query execution.
+     * @throws \ReflectionException
      */
     public function search(array $params): array
     {
-        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query->execute();
 
         if (empty($result['data'])) {
@@ -159,13 +161,14 @@ abstract class Repository implements RepositoryInterface
      * @param int $page The current page number (default is 1).
      * @param int $perPage The number of items to display per page (default is 10).
      * @return array An array containing the paginated results, current page, items per page, and total count.
+     * @throws \ReflectionException
      */
     public function paginate(array $params, int $page = 1, int $perPage = 10): array
     {
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
 
-        $query = $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index));
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query
             ->limit($perPage)
             ->offset(($page - 1) * $perPage)
@@ -185,7 +188,7 @@ abstract class Repository implements RepositoryInterface
             ...$result,
             'current_page' => (int)$page,
             'per_page' => (int)$perPage,
-            'total' => $this->queryParser->parse($params, $this->queryBuilderAdapter->from($this->index))->count()
+            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count()
         ];
     }
 
@@ -196,12 +199,14 @@ abstract class Repository implements RepositoryInterface
      * @return EntityInterface The updated entity after successful modification.
      * @throws EntityValidationWithErrorsException If the provided entity fails validation.
      * @throws RepositoryUpdateException If the update operation fails or encounters an error.
+     * @throws EntityValidationWithErrorsException
+     * @throws \ReflectionException
      */
     public function update(EntityInterface $entity): EntityInterface
     {
         $this->validateEntity($entity);
 
-        $result = $this->queryBuilderAdapter
+        $result = $this->queryBuilder
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
 
@@ -220,7 +225,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): bool
     {
-        $result = $this->queryBuilderAdapter->from($this->index)->delete($id);
+        $result = $this->queryBuilder->from($this->index)->delete($id);
         return in_array($result['result'], ['deleted', 'updated', 'noop']);
     }
 
@@ -232,7 +237,7 @@ abstract class Repository implements RepositoryInterface
      */
     public function exists(string $id): bool
     {
-        return $this->queryBuilderAdapter
+        return $this->queryBuilder
                 ->select()
                 ->from($this->index)
                 ->where('id', '=', $id)
