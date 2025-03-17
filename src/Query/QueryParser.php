@@ -43,7 +43,7 @@ class QueryParser implements QueryParserInterface
             if (str_starts_with($key, '_')) {
                 continue;
             }
-            $queryBuilder->where($key, '=', $value);
+            $queryBuilder->where($key, $value);
         }
         
         return $queryBuilder;

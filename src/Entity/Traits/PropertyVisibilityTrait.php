@@ -15,6 +15,7 @@ trait PropertyVisibilityTrait
     protected array $hiddenProperties = [
         '@timestamp',
         'deleted',
+        'entity_factory',
         'entity_state',
         'errors',
         'event_dispatcher',
@@ -22,7 +23,7 @@ trait PropertyVisibilityTrait
         'logger',
         'validators',
     ];
-    
+
     /**
      * Hides the specified property or properties by adding them to a list of hidden properties.
      *
@@ -42,7 +43,7 @@ trait PropertyVisibilityTrait
 
         return $this;
     }
-    
+
     /**
      * Checks if a property should be hidden.
      *

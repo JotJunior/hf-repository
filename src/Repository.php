@@ -58,7 +58,7 @@ abstract class Repository implements RepositoryInterface
         $result = $this->queryBuilder
             ->select()
             ->from($this->index)
-            ->where('id', '=', $id)
+            ->where('id', $id)
             ->execute();
 
         if ($result['result'] !== 'success' || empty($result['data'][0])) {
@@ -239,7 +239,7 @@ abstract class Repository implements RepositoryInterface
         return $this->queryBuilder
                 ->select()
                 ->from($this->index)
-                ->where('id', '=', $id)
+                ->where('id', $id)
                 ->count() > 0;
     }
 }

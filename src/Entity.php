@@ -40,7 +40,6 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
 
     /**
      * Retrieves the value of an inaccessible or non-public property.
-     *
      * @param string $name The name of the property to retrieve.
      * @return mixed The value of the requested property.
      * @throws InvalidEntityException If the property does not exist in the object.
@@ -55,7 +54,6 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     
     /**
      * Gets the entity factory used to create related entities.
-     * 
      * @return EntityFactoryInterface|null The entity factory instance or null if not set
      */
     public function getEntityFactory(): ?EntityFactoryInterface
@@ -70,7 +68,6 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     
     /**
      * Sets the entity factory to use for creating related entities.
-     * 
      * @param EntityFactoryInterface $entityFactory The entity factory instance
      * @return self
      */
