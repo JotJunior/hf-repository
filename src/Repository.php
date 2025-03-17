@@ -65,7 +65,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return $this->entityFactory->create($this->entity, ['data' => $result['data'][0]]);
+        return $this->entityFactory->create($this->entity, $result['data'][0]);
     }
 
     /**
@@ -89,7 +89,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryCreateException($result['error'] ?? 'Failed to create entity');
         }
 
-        $createdEntity = $this->entityFactory->create($this->entity, ['data' => $result['data']]);
+        $createdEntity = $this->entityFactory->create($this->entity, $result['data']);
 
         if (!$createdEntity instanceof EntityInterface) {
             throw new RepositoryCreateException('Failed to create entity instance');
@@ -127,7 +127,7 @@ abstract class Repository implements RepositoryInterface
             return null;
         }
 
-        return $this->entityFactory->create($this->entity, ['data' => $result['data'][0]]);
+        return $this->entityFactory->create($this->entity, $result['data'][0]);
     }
 
     /**
@@ -148,7 +148,7 @@ abstract class Repository implements RepositoryInterface
         }
 
         return array_map(
-            fn($item) => $this->entityFactory->create($this->entity, ['data' => $item]),
+            fn($item) => $this->entityFactory->create($this->entity, $item),
             $result['data']
         );
     }
@@ -176,7 +176,7 @@ abstract class Repository implements RepositoryInterface
         $entities = [];
         if (!empty($result['data'])) {
             $entities = array_map(
-                fn($item) => $this->entityFactory->create($this->entity, ['data' => $item])->toArray(),
+                fn($item) => $this->entityFactory->create($this->entity, $item)->toArray(),
                 $result['data']
             );
         }
@@ -213,7 +213,7 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryUpdateException($result['error'] ?? 'Failed to update entity');
         }
 
-        return $this->entityFactory->create($this->entity, ['data' => $result['data']]);
+        return $this->entityFactory->create($this->entity, $result['data']);
     }
 
     /**
