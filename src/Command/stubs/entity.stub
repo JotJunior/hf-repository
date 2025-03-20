@@ -6,8 +6,8 @@ namespace {{namespace}};
 
 use DateTimeInterface;
 use Jot\HfRepository\Entity;
-use Jot\HfRepository\Trait\HasTimestamps;
-use Jot\HfRepository\Trait\HasLogicRemoval;
+use Jot\HfRepository\Entity\Traits\HasLogicRemovalTrait as HasLogicRemoval;
+use Jot\HfRepository\Entity\Traits\HasTimestampsTrait as HasTimestamps;
 use Hyperf\Swagger\Annotation as SA;
 
 #[SA\Schema(schema: "{{schema}}")]

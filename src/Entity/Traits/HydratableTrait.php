@@ -8,20 +8,19 @@ use Hyperf\Stringable\Str;
 use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Entity;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
+use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitScalarTestClass;
 use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitTestClass;
-use function Hyperf\Support\make;
 
 /**
  * Trait that provides hydration functionality.
  */
 trait HydratableTrait
 {
+
     /**
-     * Populates the current entity's properties with the provided key-value pairs.
-     *
-     * @param array $data An associative array where keys represent property names (in snake_case)
-     *                    and values are the corresponding values to set.
-     * @return Entity|HydratableTrait|HydratableTraitTestClass Returns the current instance with the updated properties.
+     * Populates the current object with data from the provided array.
+     * @param array $data An associative array where keys correspond to property names and values are the values to be assigned.
+     * @return HydratableTrait|Entity|HydratableTraitScalarTestClass|HydratableTraitTestClass Returns the instance of the current object after hydration.
      * @throws \ReflectionException
      */
     public function hydrate(array $data): self
@@ -35,36 +34,50 @@ trait HydratableTrait
 
             $relatedClass = $this->getRelatedClassFromAttributes($property);
             if (!empty($relatedClass) && class_exists($relatedClass)) {
-                // Use EntityFactory if available, otherwise fallback to direct instantiation
-                if (method_exists($this, 'getEntityFactory') && $this->getEntityFactory() instanceof EntityFactoryInterface) {
-                    if (is_array($value)) {
-                        $this->$property = $this->getEntityFactory()->create($relatedClass, $value);
-                    } else {
-                        // If value is not an array, create a new instance directly
-                        $this->$property = new $relatedClass();
-                        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
-                            // If the related class has a hydrate method, use it with a simple key-value pair
-                            $this->$property->hydrate(['id' => $value]);
-                        }
-                    }
-                } else {
-                    // Fallback to direct instantiation if no EntityFactory is available
-                    if (is_array($value)) {
-                        $this->$property = new $relatedClass($value);
-                    } else {
-                        $this->$property = new $relatedClass();
-                        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
-                            // If the related class has a hydrate method, use it with a simple key-value pair
-                            $this->$property->hydrate(['id' => $value]);
-                        }
-                    }
-                }
+                $this->hydrateRelatedProperty($property, $relatedClass, $value);
             } else {
                 $this->$property = $value;
             }
         }
 
         return $this;
+    }
+
+    /**
+     * Hydrates a related property of the current object with the specified value,
+     * based on the provided related class type.
+     * @param string $property The name of the property to be hydrated.
+     * @param string $relatedClass The fully-qualified class name of the related entity.
+     * @param mixed $value The value used to hydrate the related property.
+     * @return void
+     */
+    private function hydrateRelatedProperty(string $property, string $relatedClass, mixed $value): void
+    {
+        if ($this->isDateTimeClass($relatedClass) && $value) {
+            $this->$property = new $relatedClass($value);
+            return;
+        }
+
+        $entityFactory = $this->getEntityFactory();
+        if ($entityFactory instanceof EntityFactoryInterface && is_array($value)) {
+            $this->$property = $entityFactory->create($relatedClass, $value);
+            return;
+        }
+
+        $this->$property = new $relatedClass();
+        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
+            $this->$property->hydrate(['id' => $value]);
+        }
+    }
+
+    /**
+     * Checks if a given class name contains the substring 'DateTime'.
+     * @param string $className The name of the class to be checked.
+     * @return bool Returns true if the class name contains 'DateTime', otherwise false.
+     */
+    private function isDateTimeClass(string $className): bool
+    {
+        return str_contains($className, 'DateTime');
     }
 
     /**

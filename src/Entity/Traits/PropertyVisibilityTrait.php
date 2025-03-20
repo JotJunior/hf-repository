@@ -16,6 +16,7 @@ trait PropertyVisibilityTrait
         '@timestamp',
         'deleted',
         'entity_factory',
+        'entity_factory_class',
         'entity_state',
         'errors',
         'event_dispatcher',

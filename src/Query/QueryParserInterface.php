@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Query;
 
-use Jot\HfElastic\QueryBuilder;
-use Jot\HfRepository\Adapter\QueryBuilderAdapter;
+use Jot\HfElastic\Contracts\QueryBuilderInterface;
 
 /**
  * Interface for query parsing functionality.
- * 
+ *
  * This interface defines the contract for classes that parse query parameters
  * into QueryBuilder instances. It follows the Interface Segregation Principle
  * by providing a focused interface for query parsing.
@@ -23,8 +22,7 @@ interface QueryParserInterface
      *                      - '_fields' for selecting specific fields
      *                      - '_sort' for defining sorting order
      *                      - Other key-value pairs for filtering conditions
-     * @param QueryBuilder|QueryBuilderAdapter $queryBuilder The base query builder to modify
-     * @return QueryBuilder|QueryBuilderAdapter The constructed QueryBuilder instance reflecting the parsed parameters
+     * @param QueryBuilderInterface $queryBuilder The base query builder to modify
      */
-    public function parse(array $params, $queryBuilder);
+    public function parse(array $params, QueryBuilderInterface $queryBuilder);
 }

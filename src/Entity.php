@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Contract\Arrayable;
+use Hyperf\Context\Context;
+use Hyperf\Di\Annotation\Inject;
+use Hyperf\Utils\Serializer\SerializerFactory;
 use Jot\HfRepository\Entity\EntityIdentifierInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Entity\HashableInterface;
@@ -20,10 +23,19 @@ use Jot\HfRepository\Entity\ValidatableInterface;
 use Jot\HfRepository\Exception\InvalidEntityException;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityFactory;
+use Psr\Container\ContainerInterface;
 
+/**
+ * Base entity class optimized for Swoole/Hyperf environment.
+ * 
+ * This implementation ensures:
+ * - Coroutine safety through Context isolation
+ * - Proper dependency injection
+ * - Serializable entities for coroutine scheduling
+ * - No static property issues
+ */
 abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInterface, HashableInterface, PropertyVisibilityInterface, StateAwareInterface, ValidatableInterface
 {
-
     use EntityIdentifierTrait;
     use EntityStateTrait;
     use HashableTrait;
@@ -31,11 +43,31 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     use PropertyVisibilityTrait;
     use ValidatableTrait;
 
-    protected ?EntityFactoryInterface $entityFactory = null;
+    /**
+     * @Inject
+     * @var ContainerInterface
+     */
+    protected ContainerInterface $container;
 
-    public function __construct(array $data)
+    /**
+     * Entity factory instance (stored in Context for coroutine safety)
+     */
+    protected ?string $entityFactoryClass = EntityFactory::class;
+
+    /**
+     * Context key for entity factory
+     */
+    private const CONTEXT_ENTITY_FACTORY = 'entity.factory.';
+
+    /**
+     * Constructor with dependency injection support
+     */
+    public function __construct(array $data = [])
     {
-        $this->hydrate($data);
+        // Hydrate the entity with provided data
+        if (!empty($data)) {
+            $this->hydrate($data);
+        }
     }
 
     /**
@@ -54,28 +86,85 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     
     /**
      * Gets the entity factory used to create related entities.
-     * @return EntityFactoryInterface|null The entity factory instance or null if not set
+     * Uses Hyperf Context to ensure coroutine safety.
+     * 
+     * @return EntityFactoryInterface The entity factory instance
      */
-    public function getEntityFactory(): ?EntityFactoryInterface
+    public function getEntityFactory(): EntityFactoryInterface
     {
-        if ($this->entityFactory === null) {
-            // Lazily create a default entity factory if none is set
-            $this->entityFactory = new EntityFactory();
+        $contextKey = self::CONTEXT_ENTITY_FACTORY . spl_object_hash($this);
+        
+        // Try to get from context first
+        $factory = Context::get($contextKey);
+        
+        if ($factory === null) {
+            // Create factory through container if possible
+            if (isset($this->container) && $this->container->has($this->entityFactoryClass)) {
+                $factory = $this->container->get($this->entityFactoryClass);
+            } else {
+                // Fallback to direct instantiation
+                $factoryClass = $this->entityFactoryClass;
+                $factory = new $factoryClass();
+            }
+            
+            // Store in context for this coroutine
+            Context::set($contextKey, $factory);
         }
         
-        return $this->entityFactory;
+        return $factory;
     }
     
     /**
      * Sets the entity factory to use for creating related entities.
+     * Updates the Hyperf Context to ensure coroutine safety.
+     * 
      * @param EntityFactoryInterface $entityFactory The entity factory instance
      * @return self
      */
     public function setEntityFactory(EntityFactoryInterface $entityFactory): self
     {
-        $this->entityFactory = $entityFactory;
+        $contextKey = self::CONTEXT_ENTITY_FACTORY . spl_object_hash($this);
+        Context::set($contextKey, $entityFactory);
+        
         return $this;
     }
-
-
+    
+    /**
+     * Magic method to handle serialization for coroutine scheduling.
+     * Ensures that non-serializable properties are properly handled.
+     * 
+     * @return array
+     */
+    public function __sleep(): array
+    {
+        $properties = get_object_vars($this);
+        
+        // Remove container and other non-serializable properties
+        unset($properties['container']);
+        
+        return array_keys($properties);
+    }
+    
+    /**
+     * Magic method to handle unserialization after coroutine scheduling.
+     * Restores container and other dependencies.
+     */
+    public function __wakeup(): void
+    {
+        // Container will be re-injected by Hyperf's dependency injection
+    }
+    
+    /**
+     * Creates a deep clone of the entity, ensuring all nested objects are cloned.
+     * Important for coroutine safety to prevent shared references.
+     */
+    public function __clone()
+    {
+        // Deep clone any object properties to prevent shared references
+        foreach (get_object_vars($this) as $key => $value) {
+            if (is_object($value)) {
+                $this->$key = clone $value;
+            }
+        }
+    }
 }

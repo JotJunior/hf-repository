@@ -22,7 +22,8 @@ class ConfigProvider
             'dependencies' => [
                 HttpServer::class => SwaggerHttpServer::class,
                 QueryParserInterface::class => QueryParser::class,
-                EntityFactoryInterface::class => EntityFactory::class
+                EntityFactoryInterface::class => EntityFactory::class,
+                RepositoryInterface::class => Repository::class
             ],
             'commands' => [
                 GenerateControllerCommand::class,

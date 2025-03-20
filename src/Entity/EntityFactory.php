@@ -8,7 +8,6 @@ use function Hyperf\Support\make;
 
 /**
  * Default implementation of EntityFactoryInterface.
- *
  * This class is responsible for creating entity instances.
  * It follows the Single Responsibility Principle by focusing solely on entity creation.
  */
@@ -16,7 +15,6 @@ class EntityFactory implements EntityFactoryInterface
 {
     /**
      * Creates an entity instance of the specified class with the given data.
-     *
      * @param string $entityClass The fully qualified class name of the entity to create
      * @param array $data The data to initialize the entity with
      * @return mixed The created entity instance
@@ -31,13 +29,11 @@ class EntityFactory implements EntityFactoryInterface
         if ($constructor) {
             $params = $constructor->getParameters();
             if (count($params) === 1 && $params[0]->getType() && $params[0]->getType()->getName() === 'array') {
-                // If the constructor expects a single array parameter, pass the data as a single parameter
-                return make($entityClass, [$data]);
+                return make($entityClass, ['data' => $data]);
             }
         }
 
-        // Otherwise, pass the data as individual parameters
-        return make($entityClass, $data);
+        return make($entityClass, ['data' => $data]);
     }
 
 }
