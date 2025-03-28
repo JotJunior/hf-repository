@@ -5,6 +5,6 @@ namespace Jot\HfRepository\Entity\Traits;
 trait HasLogicRemovalTrait
 {
 
-    protected ?bool $deleted = null;
+    protected null|bool|int $deleted = null;
 
 }

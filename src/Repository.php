@@ -3,6 +3,7 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Context\Context;
+use Hyperf\Contract\ContainerInterface;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\Contracts\QueryBuilderInterface;
@@ -12,7 +13,6 @@ use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
-use Psr\Container\ContainerInterface;
 
 /**
  * Abstract Repository class implementing the Repository pattern.
@@ -31,31 +31,31 @@ use Psr\Container\ContainerInterface;
 abstract class Repository implements RepositoryInterface
 {
     /**
+     * Context key prefix for repository instances
+     */
+    private const CONTEXT_REPOSITORY = 'repository.instance.';
+    /**
      * @Inject
      * @var ContainerInterface
      */
     protected ContainerInterface $container;
-    
     /**
      * Entity class name to be instantiated by this repository
      */
     protected string $entity;
-    
     /**
      * Index name for storage operations
      */
     protected string $index;
-    
-    /**
-     * Context key prefix for repository instances
-     */
-    private const CONTEXT_REPOSITORY = 'repository.instance.';
 
-    public function __construct(
-        protected QueryBuilderInterface  $queryBuilder,
-        protected QueryParserInterface   $queryParser,
-        protected EntityFactoryInterface $entityFactory
-    )
+    #[Inject]
+    protected QueryBuilderInterface $queryBuilder;
+    #[Inject]
+    protected QueryParserInterface $queryParser;
+    #[Inject]
+    protected EntityFactoryInterface $entityFactory;
+
+    public function __construct()
     {
         $this->index = $this->getIndexName();
     }
@@ -74,20 +74,20 @@ abstract class Repository implements RepositoryInterface
     /**
      * Finds and retrieves an entity by its ID.
      * Uses Context to store query results for the current coroutine.
-     * 
+     *
      * @param string $id The unique identifier of the entity.
      * @return null|EntityInterface The hydrated entity if found, or null if not found.
      */
     public function find(string $id): ?EntityInterface
     {
         $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $id;
-        
+
         // Check if we already have this entity in the current coroutine context
         $cachedEntity = Context::get($contextKey);
         if ($cachedEntity !== null) {
             return $cachedEntity;
         }
-        
+
         $result = $this->queryBuilder
             ->select()
             ->from($this->index)
@@ -101,10 +101,10 @@ abstract class Repository implements RepositoryInterface
         }
 
         $entity = $this->entityFactory->create($this->entity, $result['data'][0]);
-        
+
         // Store in context for this coroutine
         Context::set($contextKey, $entity);
-        
+
         return $entity;
     }
 
@@ -134,7 +134,7 @@ abstract class Repository implements RepositoryInterface
         if (!$createdEntity instanceof EntityInterface) {
             throw new RepositoryCreateException('Failed to create entity instance');
         }
-        
+
         // Store in context for this coroutine if it has an ID
         if (method_exists($createdEntity, 'getId') && $createdEntity->getId()) {
             $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $createdEntity->getId();
@@ -167,13 +167,13 @@ abstract class Repository implements RepositoryInterface
     {
         // Create a unique context key based on the parameters
         $contextKey = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.' . md5(serialize($params));
-        
+
         // Check if we already have this result in the current coroutine context
         $cachedEntity = Context::get($contextKey);
         if ($cachedEntity !== null) {
             return $cachedEntity;
         }
-        
+
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query->limit(1)->execute();
 
@@ -184,16 +184,16 @@ abstract class Repository implements RepositoryInterface
         }
 
         $entity = $this->entityFactory->create($this->entity, $result['data'][0]);
-        
+
         // Store in context for this coroutine
         Context::set($contextKey, $entity);
-        
+
         // Also store by ID for potential future find() calls
         if (method_exists($entity, 'getId') && $entity->getId()) {
             $idContextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $entity->getId();
             Context::set($idContextKey, $entity);
         }
-        
+
         return $entity;
     }
 
@@ -209,13 +209,13 @@ abstract class Repository implements RepositoryInterface
     {
         // Create a unique context key based on the parameters
         $contextKey = self::CONTEXT_REPOSITORY . 'search.' . $this->index . '.' . md5(serialize($params));
-        
+
         // Check if we already have this result in the current coroutine context
         $cachedResults = Context::get($contextKey);
         if ($cachedResults !== null) {
             return $cachedResults;
         }
-        
+
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query->execute();
 
@@ -226,23 +226,23 @@ abstract class Repository implements RepositoryInterface
         }
 
         $entities = array_map(
-            function($item) {
+            function ($item) {
                 $entity = $this->entityFactory->create($this->entity, $item);
-                
+
                 // Also store individual entities by ID for potential future find() calls
                 if (method_exists($entity, 'getId') && $entity->getId()) {
                     $idContextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $entity->getId();
                     Context::set($idContextKey, $entity);
                 }
-                
+
                 return $entity;
             },
             $result['data']
         );
-        
+
         // Store in context for this coroutine
         Context::set($contextKey, $entities);
-        
+
         return $entities;
     }
 
@@ -259,15 +259,15 @@ abstract class Repository implements RepositoryInterface
     {
         // Create a unique context key based on the parameters and pagination info
         $paginationInfo = ['page' => $page, 'perPage' => $perPage];
-        $contextKey = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.' . 
-                     md5(serialize($params) . serialize($paginationInfo));
-        
+        $contextKey = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.' .
+            md5(serialize($params) . serialize($paginationInfo));
+
         // Check if we already have this result in the current coroutine context
         $cachedResults = Context::get($contextKey);
         if ($cachedResults !== null) {
             return $cachedResults;
         }
-        
+
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
 
@@ -280,15 +280,15 @@ abstract class Repository implements RepositoryInterface
         $entities = [];
         if (!empty($result['data'])) {
             $entities = array_map(
-                function($item) {
+                function ($item) {
                     $entity = $this->entityFactory->create($this->entity, $item);
-                    
+
                     // Also store individual entities by ID for potential future find() calls
                     if (method_exists($entity, 'getId') && $entity->getId()) {
                         $idContextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $entity->getId();
                         Context::set($idContextKey, $entity);
                     }
-                    
+
                     return $entity->toArray();
                 },
                 $result['data']
@@ -303,10 +303,10 @@ abstract class Repository implements RepositoryInterface
             'per_page' => (int)$perPage,
             'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count()
         ];
-        
+
         // Store in context for this coroutine
         Context::set($contextKey, $paginatedResult);
-        
+
         return $paginatedResult;
     }
 
@@ -333,17 +333,44 @@ abstract class Repository implements RepositoryInterface
         }
 
         $updatedEntity = $this->entityFactory->create($this->entity, $result['data']);
-        
+
         // Update entity in context for this coroutine
         if (method_exists($updatedEntity, 'getId') && $updatedEntity->getId()) {
             $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $updatedEntity->getId();
             Context::set($contextKey, $updatedEntity);
-            
+
             // Also invalidate any cached search or paginate results that might contain this entity
             $this->invalidateContextCache();
         }
-        
+
         return $updatedEntity;
+    }
+
+    /**
+     * Invalidates cached search and paginate results in the current coroutine context.
+     * This is called after operations that modify data to ensure consistency.
+     */
+    protected function invalidateContextCache(): void
+    {
+        // Get all context keys for this coroutine
+        $contextKeys = Context::getContainer();
+
+        if (!is_array($contextKeys)) {
+            return;
+        }
+
+        // Find and remove search and paginate cache entries for this repository
+        $searchPrefix = self::CONTEXT_REPOSITORY . 'search.' . $this->index . '.';
+        $paginatePrefix = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.';
+        $firstPrefix = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.';
+
+        foreach ($contextKeys as $key => $value) {
+            if (str_starts_with($key, $searchPrefix) ||
+                str_starts_with($key, $paginatePrefix) ||
+                str_starts_with($key, $firstPrefix)) {
+                Context::set($key, null);
+            }
+        }
     }
 
     /**
@@ -356,16 +383,16 @@ abstract class Repository implements RepositoryInterface
     {
         $result = $this->queryBuilder->from($this->index)->delete($id);
         $success = in_array($result['result'], ['deleted', 'updated', 'noop']);
-        
+
         if ($success) {
             // Remove entity from context
             $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $id;
             Context::set($contextKey, null);
-            
+
             // Also invalidate any cached search or paginate results that might contain this entity
             $this->invalidateContextCache();
         }
-        
+
         return $success;
     }
 
@@ -380,75 +407,48 @@ abstract class Repository implements RepositoryInterface
         // Check if the entity is already in context
         $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $id;
         $entity = Context::get($contextKey);
-        
+
         if ($entity !== null) {
             // If we have the entity in context, it exists
             return true;
         }
-        
+
         // Create a unique context key for this exists check
         $existsKey = self::CONTEXT_REPOSITORY . 'exists.' . $this->index . '.' . $id;
         $exists = Context::get($existsKey);
-        
+
         if ($exists !== null) {
             return $exists;
         }
-        
+
         $result = $this->queryBuilder
                 ->select()
                 ->from($this->index)
                 ->where('id', $id)
                 ->count() > 0;
-                
+
         // Store in context for this coroutine
         Context::set($existsKey, $result);
-        
+
         return $result;
     }
-    
-    /**
-     * Invalidates cached search and paginate results in the current coroutine context.
-     * This is called after operations that modify data to ensure consistency.
-     */
-    protected function invalidateContextCache(): void
-    {
-        // Get all context keys for this coroutine
-        $contextKeys = Context::getContainer();
-        
-        if (!is_array($contextKeys)) {
-            return;
-        }
-        
-        // Find and remove search and paginate cache entries for this repository
-        $searchPrefix = self::CONTEXT_REPOSITORY . 'search.' . $this->index . '.';
-        $paginatePrefix = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.';
-        $firstPrefix = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.';
-        
-        foreach ($contextKeys as $key => $value) {
-            if (str_starts_with($key, $searchPrefix) || 
-                str_starts_with($key, $paginatePrefix) || 
-                str_starts_with($key, $firstPrefix)) {
-                Context::set($key, null);
-            }
-        }
-    }
-    
+
     /**
      * Magic method to handle serialization for coroutine scheduling.
      * Ensures that non-serializable properties are properly handled.
-     * 
+     *
      * @return array
      */
     public function __sleep(): array
     {
         $properties = get_object_vars($this);
-        
+
         // Remove container and other non-serializable properties
         unset($properties['container']);
-        
+
         return array_keys($properties);
     }
-    
+
     /**
      * Magic method to handle unserialization after coroutine scheduling.
      * Restores container and other dependencies.
@@ -457,7 +457,7 @@ abstract class Repository implements RepositoryInterface
     {
         // Container will be re-injected by Hyperf's dependency injection
     }
-    
+
     /**
      * Creates a deep clone of the repository, ensuring all nested objects are cloned.
      * Important for coroutine safety to prevent shared references.

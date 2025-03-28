@@ -17,35 +17,52 @@ use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\RateLimit\Exception\RateLimitException;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
+use Jot\HfRepository\Exception\RepositoryCreateException;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 class ControllerExceptionHandler extends ExceptionHandler
 {
+
+    private const EXCEPTION_HANDLERS = [
+        RateLimitException::class => [
+            'status' => 429,
+            'message' => 'Too Many Requests.'
+        ],
+        EntityValidationWithErrorsException::class => [
+            'status' => 400,
+            'handler' => 'handleValidationException'
+        ],
+        RepositoryCreateException::class => [
+            'status' => 400,
+            'handler' => 'handleRepositoryException'
+        ]
+    ];
+
     public function __construct(protected StdoutLoggerInterface $logger)
     {
     }
 
-    public function handle(Throwable $throwable, ResponseInterface $response)
+    public function handle(Throwable $throwable, ResponseInterface $response): ResponseInterface
     {
-        if ($throwable instanceof RateLimitException) {
-            $this->stopPropagation();
-            return $this->createJsonResponse($response, 429, ['message' => 'Too Many Requests.']);
+        $exceptionClass = get_class($throwable);
+
+        if (!isset(self::EXCEPTION_HANDLERS[$exceptionClass])) {
+            return $response;
         }
 
-        if ($throwable instanceof EntityValidationWithErrorsException) {
-            $this->stopPropagation();
+        $this->stopPropagation();
+        $handler = self::EXCEPTION_HANDLERS[$exceptionClass];
 
-            $errors = $throwable->getErrors();
-            $message = $this->formatValidationErrorMessage($errors);
-
-            return $this->createJsonResponse($response, 400, [
-                'message' => $message,
-                'errors' => $errors,
-            ]);
+        if (isset($handler['handler'])) {
+            return $this->{$handler['handler']}($throwable, $response);
         }
 
-        return $response;
+        return $this->createJsonResponse(
+            $response,
+            $handler['status'],
+            ['message' => $handler['message']]
+        );
     }
 
     private function createJsonResponse(ResponseInterface $response, int $statusCode, array $data): ResponseInterface
@@ -54,6 +71,23 @@ class ControllerExceptionHandler extends ExceptionHandler
             ->withHeader('Content-Type', 'application/json')
             ->withStatus($statusCode)
             ->withBody(new SwooleStream(json_encode($data, JSON_UNESCAPED_UNICODE)));
+    }
+
+    public function isValid(Throwable $throwable): bool
+    {
+        return true;
+    }
+
+    private function handleValidationException(
+        EntityValidationWithErrorsException $exception,
+        ResponseInterface                   $response
+    ): ResponseInterface
+    {
+        $errors = $exception->getErrors();
+        return $this->createJsonResponse($response, 400, [
+            'message' => $this->formatValidationErrorMessage($errors),
+            'errors' => $errors,
+        ]);
     }
 
     private function formatValidationErrorMessage(array $errors): string
@@ -65,8 +99,13 @@ class ControllerExceptionHandler extends ExceptionHandler
         return current($errors)[0];
     }
 
-    public function isValid(Throwable $throwable): bool
+    private function handleRepositoryException(
+        RepositoryCreateException $exception,
+        ResponseInterface         $response
+    ): ResponseInterface
     {
-        return true;
+        return $this->createJsonResponse($response, 400, [
+            'message' => $exception->getMessage()
+        ]);
     }
 }

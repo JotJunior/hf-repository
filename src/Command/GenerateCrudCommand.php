@@ -22,6 +22,7 @@ class GenerateCrudCommand extends AbstractCommand
         $this->setDescription('Creates a complete crud controller for a given Elasticsearch index.');
         $this->addUsage('repo:crud --index=index_name [--api-version=v1] [--force]');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
+        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
         $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
         $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
     }
@@ -30,6 +31,7 @@ class GenerateCrudCommand extends AbstractCommand
     {
 
         $indexName = $this->getIndexName();
+        $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
 
         if (!$this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
             $this->line(sprintf('Index <fg=yellow>%s</> does not exist.', $this->getIndexName(removePrefix: false)));

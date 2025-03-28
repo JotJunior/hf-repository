@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
-use Hyperf\Contract\Arrayable;
 use Hyperf\Context\Context;
-use Hyperf\Di\Annotation\Inject;
-use Hyperf\Utils\Serializer\SerializerFactory;
+use Hyperf\Contract\Arrayable;
+use Jot\HfRepository\Entity\EntityFactory;
+use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityIdentifierInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Entity\HashableInterface;
@@ -21,13 +21,10 @@ use Jot\HfRepository\Entity\Traits\PropertyVisibilityTrait;
 use Jot\HfRepository\Entity\Traits\ValidatableTrait;
 use Jot\HfRepository\Entity\ValidatableInterface;
 use Jot\HfRepository\Exception\InvalidEntityException;
-use Jot\HfRepository\Entity\EntityFactoryInterface;
-use Jot\HfRepository\Entity\EntityFactory;
 use Psr\Container\ContainerInterface;
 
 /**
  * Base entity class optimized for Swoole/Hyperf environment.
- * 
  * This implementation ensures:
  * - Coroutine safety through Context isolation
  * - Proper dependency injection
@@ -44,20 +41,18 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     use ValidatableTrait;
 
     /**
+     * Context key for entity factory
+     */
+    private const CONTEXT_ENTITY_FACTORY = 'entity.factory.';
+    /**
      * @Inject
      * @var ContainerInterface
      */
     protected ContainerInterface $container;
-
     /**
      * Entity factory instance (stored in Context for coroutine safety)
      */
     protected ?string $entityFactoryClass = EntityFactory::class;
-
-    /**
-     * Context key for entity factory
-     */
-    private const CONTEXT_ENTITY_FACTORY = 'entity.factory.';
 
     /**
      * Constructor with dependency injection support
@@ -83,20 +78,21 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
         }
         return $this->$name;
     }
-    
+
     /**
      * Gets the entity factory used to create related entities.
      * Uses Hyperf Context to ensure coroutine safety.
-     * 
      * @return EntityFactoryInterface The entity factory instance
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
      */
     public function getEntityFactory(): EntityFactoryInterface
     {
         $contextKey = self::CONTEXT_ENTITY_FACTORY . spl_object_hash($this);
-        
+
         // Try to get from context first
         $factory = Context::get($contextKey);
-        
+
         if ($factory === null) {
             // Create factory through container if possible
             if (isset($this->container) && $this->container->has($this->entityFactoryClass)) {
@@ -106,18 +102,18 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
                 $factoryClass = $this->entityFactoryClass;
                 $factory = new $factoryClass();
             }
-            
+
             // Store in context for this coroutine
             Context::set($contextKey, $factory);
         }
-        
+
         return $factory;
     }
-    
+
     /**
      * Sets the entity factory to use for creating related entities.
      * Updates the Hyperf Context to ensure coroutine safety.
-     * 
+     *
      * @param EntityFactoryInterface $entityFactory The entity factory instance
      * @return self
      */
@@ -125,26 +121,26 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     {
         $contextKey = self::CONTEXT_ENTITY_FACTORY . spl_object_hash($this);
         Context::set($contextKey, $entityFactory);
-        
+
         return $this;
     }
-    
+
     /**
      * Magic method to handle serialization for coroutine scheduling.
      * Ensures that non-serializable properties are properly handled.
-     * 
+     *
      * @return array
      */
     public function __sleep(): array
     {
         $properties = get_object_vars($this);
-        
+
         // Remove container and other non-serializable properties
         unset($properties['container']);
-        
+
         return array_keys($properties);
     }
-    
+
     /**
      * Magic method to handle unserialization after coroutine scheduling.
      * Restores container and other dependencies.
@@ -153,7 +149,7 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     {
         // Container will be re-injected by Hyperf's dependency injection
     }
-    
+
     /**
      * Creates a deep clone of the entity, ensuring all nested objects are cloned.
      * Important for coroutine safety to prevent shared references.

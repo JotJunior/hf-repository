@@ -10,6 +10,8 @@ use Jot\HfRepository\Entity;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitScalarTestClass;
 use Jot\HfRepository\Tests\Entity\Traits\HydratableTraitTestClass;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 
 /**
  * Trait that provides hydration functionality.
@@ -28,56 +30,24 @@ trait HydratableTrait
         foreach ($data as $key => $value) {
             $property = Str::camel($key);
 
+            if($key === 'id' && is_bool($value)) {
+                $value = '-';
+            }
+
             if (!$this->propertyExistsInEntity($property)) {
                 continue;
             }
 
-            $relatedClass = $this->getRelatedClassFromAttributes($property);
+            list($relatedClass, $params) = $this->getRelatedClassFromAttributes($property);
+
             if (!empty($relatedClass) && class_exists($relatedClass)) {
-                $this->hydrateRelatedProperty($property, $relatedClass, $value);
+                $this->hydrateRelatedProperty($property, $relatedClass, $value, $params);
             } else {
                 $this->$property = $value;
             }
         }
 
         return $this;
-    }
-
-    /**
-     * Hydrates a related property of the current object with the specified value,
-     * based on the provided related class type.
-     * @param string $property The name of the property to be hydrated.
-     * @param string $relatedClass The fully-qualified class name of the related entity.
-     * @param mixed $value The value used to hydrate the related property.
-     * @return void
-     */
-    private function hydrateRelatedProperty(string $property, string $relatedClass, mixed $value): void
-    {
-        if ($this->isDateTimeClass($relatedClass) && $value) {
-            $this->$property = new $relatedClass($value);
-            return;
-        }
-
-        $entityFactory = $this->getEntityFactory();
-        if ($entityFactory instanceof EntityFactoryInterface && is_array($value)) {
-            $this->$property = $entityFactory->create($relatedClass, $value);
-            return;
-        }
-
-        $this->$property = new $relatedClass();
-        if (method_exists($this->$property, 'hydrate') && is_scalar($value)) {
-            $this->$property->hydrate(['id' => $value]);
-        }
-    }
-
-    /**
-     * Checks if a given class name contains the substring 'DateTime'.
-     * @param string $className The name of the class to be checked.
-     * @return bool Returns true if the class name contains 'DateTime', otherwise false.
-     */
-    private function isDateTimeClass(string $className): bool
-    {
-        return str_contains($className, 'DateTime');
     }
 
     /**
@@ -121,12 +91,11 @@ trait HydratableTrait
 
     /**
      * Gets the related class from property attributes.
-     *
      * @param string $property The property name to check.
-     * @return string|null The related class name or null if not found.
+     * @return array|null The related class name and params or null if not found.
      * @throws \ReflectionException
      */
-    private function getRelatedClassFromAttributes(string $property): ?string
+    private function getRelatedClassFromAttributes(string $property): ?array
     {
         $reflection = new \ReflectionProperty($this, $property);
         $attributes = $reflection->getAttributes(SA\Property::class);
@@ -135,11 +104,46 @@ trait HydratableTrait
             $annotation = $attribute->newInstance();
 
             if (isset($annotation->x['php_type']) && is_string($annotation->x['php_type'])) {
-                return $annotation->x['php_type'];
+                return [$annotation->x['php_type'], $annotation->x['params'] ?? []];
             }
         }
 
         return null;
+    }
+
+    /**
+     * Hydrates a related property of the current object with the specified value,
+     * based on the provided related class type.
+     * @param string $property The name of the property to be hydrated.
+     * @param string $relatedClass The fully-qualified class name of the related entity.
+     * @param mixed $value The value used to hydrate the related property.
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    private function hydrateRelatedProperty(string $property, string $relatedClass, mixed $value): void
+    {
+        if ($this->isDateTimeClass($relatedClass) && $value) {
+            $this->$property = new $relatedClass($value);
+            return;
+        }
+
+        $entityFactory = $this->getEntityFactory();
+        if ($entityFactory instanceof EntityFactoryInterface && is_array($value)) {
+            $this->$property = $entityFactory->create($relatedClass, $value);
+            return;
+        }
+
+    }
+
+    /**
+     * Checks if a given class name contains the substring 'DateTime'.
+     * @param string $className The name of the class to be checked.
+     * @return bool Returns true if the class name contains 'DateTime', otherwise false.
+     */
+    private function isDateTimeClass(string $className): bool
+    {
+        return str_contains($className, 'DateTime');
     }
 
     /**
@@ -149,6 +153,7 @@ trait HydratableTrait
      *               and values are their corresponding values. If a property value is an object
      *               with a toArray method, its array representation is recursively included.
      *               If a property value is an array, its elements are processed similarly.
+     * @throws \ReflectionException
      */
     public function toArray(): array
     {
@@ -161,6 +166,7 @@ trait HydratableTrait
                 continue;
             }
             $property->setAccessible(true);
+            $params = $this->getRelatedClassFromAttributes($propertyName)[1] ?? null;
 
             try {
                 $value = $property->getValue($this);
@@ -168,24 +174,27 @@ trait HydratableTrait
                 continue;
             }
 
-            $array[Str::snake($propertyName)] = $this->extractVariables($value);
+            $array[Str::snake($propertyName)] = $this->extractVariables($value, $params);
         }
 
         return array_filter($array);
     }
 
+
     /**
-     * Extracts variables by transforming the input value based on its type or characteristics.
-     *
-     * @param mixed $value The input value to be transformed. This can be an object, DateTime instance, or any other type.
-     * @return mixed The transformed value. Returns the array representation if the object has a toArray method,
-     *               a formatted date string if the value is a DateTime instance, or the value itself otherwise.
+     * Extracts variables from the provided value based on its type or content.
+     * For objects with a `toArray` method, it returns the result of the `toArray` call.
+     * For DateTime or DateTimeImmutable instances, it formats the value using the specified format.
+     * Otherwise, it returns the value unchanged.
+     * @param mixed $value The value to extract or format, which may be an object, DateTime, or any other type.
+     * @param array|null $params The params to use for DateTime or DateTimeImmutable instances. Defaults to DATE_ATOM.
+     * @return mixed Returns the extracted or formatted value based on the input type.
      */
-    private function extractVariables(mixed $value): mixed
+    private function extractVariables(mixed $value, ?array $params = null): mixed
     {
         return match (true) {
             is_object($value) && method_exists($value, 'toArray') => $value->toArray(),
-            $value instanceof \DateTime, $value instanceof \DateTimeImmutable => $value->format(DATE_ATOM),
+            $value instanceof \DateTime, $value instanceof \DateTimeImmutable => $value->format($params['format'] ?? DATE_ATOM),
             default => $value,
         };
 

@@ -18,6 +18,7 @@ class GenerateEntityCommand extends AbstractCommand
         parent::configure();
         $this->setDescription('Creating entity classes based on the elasticsearch mapping configuration.');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch mapping name');
+        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
         $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Rewrite mapping file');
     }
 
@@ -28,6 +29,7 @@ class GenerateEntityCommand extends AbstractCommand
         $indexName = $this->getIndexName();
 
         $this->force = boolval($this->input->getOption('force'));
+        $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
 
         $this->createEntities($indexName);
     }

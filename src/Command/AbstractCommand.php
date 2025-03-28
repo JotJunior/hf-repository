@@ -18,6 +18,7 @@ class AbstractCommand extends HyperfCommand
     protected string $command = '';
     protected string $indexPrefix = '';
     protected bool $force = false;
+    protected array $arrayFields = [];
 
     public function __construct(protected ContainerInterface $container)
     {
@@ -25,6 +26,12 @@ class AbstractCommand extends HyperfCommand
         $this->esClient = $this->container->get(ClientBuilder::class)->build();
         $esConfig = $this->container->get(ConfigInterface::class)->get('hf_elastic');
         $this->indexPrefix = $esConfig['prefix'] ?? '';
+    }
+
+    public function setArrayFields(array $fields): self
+    {
+        $this->arrayFields = $fields;
+        return $this;
     }
 
     /**
@@ -178,6 +185,11 @@ class AbstractCommand extends HyperfCommand
             $phpType = $this->mapElasticTypeToPhpType($type);
             $fieldName = Str::singular($field);
 
+
+            if (in_array(Str::plural($fieldName), $this->arrayFields)) {
+                $type = 'array_object';
+            }
+
             switch ($type) {
                 case 'object':
                     $nestedClassName = ucfirst(Str::camel($fieldName));
@@ -191,6 +203,7 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "    )]\n";
                     break;
                 case 'nested':
+                case 'array_object':
                     $nestedClassName = ucfirst(Str::camel($fieldName));
                     $fieldName = Str::plural($fieldName);
                     $this->generateEntityFromMapping($details, $nestedClassName, $namespace, $outputDir, true);
@@ -208,23 +221,30 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: '$fieldName',\n";
                     $attributes .= "        type: 'string',\n";
-                    $attributes .= "        format: 'string',\n";
-                    $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
+                    $attributes .= "        format: 'date-time',\n";
                     $attributes .= "        x: ['php_type' => '\\DateTime']\n";
+                    $attributes .= "    )]\n";
+                    break;
+                case 'time':
+                    $attributes .= "    #[SA\Property(\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'string',\n";
+                    $attributes .= "        format: 'string',\n";
+                    $attributes .= "        x: ['php_type' => '\\DateTime', 'params' => ['format' => 'H:i:s']]\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'date_nanos':
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: '$fieldName',\n";
                     $attributes .= "        type: 'string',\n";
-                    $attributes .= "        format: 'string',\n";
+                    $attributes .= "        format: 'date-time',\n";
                     $attributes .= in_array($fieldName, $readOnlyFields) ? "        readOnly: true,\n" : "";
                     $attributes .= "        x: ['php_type' => '\\DateTimeImmutable']\n";
                     $attributes .= "    )]\n";
                     break;
                 case 'bool':
                 case 'boolean':
-                    $phpType = 'bool';
+                    $phpType = 'bool|int';
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: '$fieldName',\n";
                     $attributes .= "        type: 'boolean',\n";
@@ -252,6 +272,14 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "        example: 123.45\n";
                     $attributes .= "    )]\n";
                     break;
+                case 'geo_point':
+                    $phpType = 'array';
+                    $attributes .= "    #[SA\Property(\n";
+                    $attributes .= "        property: '$fieldName',\n";
+                    $attributes .= "        type: 'array',\n";
+                    $attributes .= "        example: [0.00,0.00]\n";
+                    $attributes .= "    )]\n";
+                    break;
                 default:
                     $attributes .= "    #[SA\Property(\n";
                     $attributes .= "        property: '$fieldName',\n";
@@ -267,7 +295,7 @@ class AbstractCommand extends HyperfCommand
             }
 
             $property = Str::camel($field);
-            $attributes .= "    protected ?$phpType \$$property = null;\n\n";
+            $attributes .= "    protected null|$phpType \$$property = null;\n\n";
 
         }
 
