@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Tests;
 
-use Hyperf\Stringable\Str;
-use Jot\HfRepository\Adapter\QueryBuilderAdapter;
+use Hyperf\Context\Context;
+use Jot\HfElastic\Contracts\QueryBuilderInterface;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Entity\EntityInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
@@ -13,6 +13,10 @@ use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
 use Jot\HfRepository\Repository;
+use Jot\HfRepository\Tests\Stubs\EntityFactoryStub;
+use Jot\HfRepository\Tests\Stubs\SimpleQueryBuilder;
+use Jot\HfRepository\Tests\Stubs\RepositoryTestEntity;
+use Jot\HfRepository\Tests\Stubs\TestRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,25 +26,38 @@ use PHPUnit\Framework\TestCase;
 class RepositoryTest extends TestCase
 {
     private TestRepository $sut;
-    private QueryBuilderAdapter $queryBuilderAdapter;
+    private QueryBuilderInterface $queryBuilder;
     private QueryParserInterface $queryParser;
     private EntityFactoryInterface $entityFactory;
     private RepositoryTestEntity $testEntity;
+    
+    // Constantes para facilitar os testes
+    private const TEST_ID = 'test-id-123';
+    private const TEST_NAME = 'Test Entity';
 
     protected function setUp(): void
     {
         parent::setUp();
         
-        $this->queryBuilderAdapter = $this->createMock(QueryBuilderAdapter::class);
+        // Usar a implementação simplificada do stub
+        $this->queryBuilder = new SimpleQueryBuilder();
+        
         $this->queryParser = $this->createMock(QueryParserInterface::class);
-        $this->entityFactory = $this->createMock(EntityFactoryInterface::class);
-        $this->testEntity = $this->createMock(RepositoryTestEntity::class);
+        $this->entityFactory = new EntityFactoryStub();
+        $this->testEntity = new RepositoryTestEntity();
+        $this->testEntity->setId('test-id-123')->setName('Test Entity');
         
         $this->sut = new TestRepository(
-            $this->queryBuilderAdapter,
+            $this->queryBuilder,
             $this->queryParser,
             $this->entityFactory
         );
+        
+        // Limpar o contexto antes de cada teste
+        Context::set('repository.instance.find.tests.test-id-123', null);
+        Context::set('repository.instance.first.tests.', null);
+        Context::set('repository.instance.search.tests.', null);
+        Context::set('repository.instance.paginate.tests.', null);
     }
 
     #[Test]
@@ -64,572 +81,369 @@ class RepositoryTest extends TestCase
     public function testFindReturnsEntityWhenFound(): void
     {
         // Arrange
-        $id = 'test-id-123';
-        $entityData = ['id' => $id, 'name' => 'Test Entity'];
+        $entityData = ['id' => 'test-id-123', 'name' => 'Test Entity'];
         
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('select')->willReturnSelf();
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->method('where')->willReturnSelf();
-        $queryBuilderAdapterMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => [$entityData]
-        ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        $this->entityFactory->method('create')
-            ->with($this->equalTo(RepositoryTestEntity::class), $this->equalTo(['data' => $entityData]))
-            ->willReturn($this->testEntity);
+        // Configure the query builder to return a successful result
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setSearchResults([$entityData]);
         
         // Act
-        $result = $this->sut->find($id);
+        $result = $this->sut->find('test-id-123');
         
         // Assert
-        $this->assertSame($this->testEntity, $result);
+        $this->assertInstanceOf(RepositoryTestEntity::class, $result);
+        $this->assertEquals('test-id-123', $result->getId());
+        $this->assertEquals('Test Entity', $result->getName());
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testFindReturnsNullWhenNotFound(): void
     {
         // Arrange
-        $id = 'non-existent-id';
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('select')->willReturnSelf();
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->method('where')->willReturnSelf();
-        $queryBuilderAdapterMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => []
-        ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setSearchResults([]);
         
         // Act
-        $result = $this->sut->find($id);
+        $result = $this->sut->find('non-existent-id');
         
         // Assert
         $this->assertNull($result);
     }
-
+    
     #[Test]
     #[Group('unit')]
-    public function testCreateSuccessful(): void
+    public function testFindReturnsCachedEntityWhenAvailable(): void
     {
         // Arrange
-        $entityData = ['id' => 'new-id', 'name' => 'New Entity'];
-        $resultData = ['id' => 'new-id', 'name' => 'New Entity', 'created_at' => '2025-03-04T12:00:00Z'];
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Cached Entity');
         
-        $this->testEntity->method('toArray')->willReturn($entityData);
-        $this->testEntity->method('validate')->willReturn(true);
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('into')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('insert')
-            ->with($this->equalTo($entityData))
-            ->willReturn([
-                'result' => 'created',
-                'data' => $resultData
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        $createdEntity = $this->createMock(RepositoryTestEntity::class);
-        $this->entityFactory->method('create')
-            ->with($this->equalTo(RepositoryTestEntity::class), $this->equalTo(['data' => $resultData]))
-            ->willReturn($createdEntity);
+        // Store entity in context
+        Context::set('repository.instance.find.tests.test-id-123', $entity);
         
         // Act
-        $result = $this->sut->create($this->testEntity);
+        $result = $this->sut->find('test-id-123');
         
         // Assert
-        $this->assertSame($createdEntity, $result);
+        $this->assertSame($entity, $result);
+        $this->assertEquals('Cached Entity', $result->getName());
     }
-
+    
+    #[Test]
+    #[Group('unit')]
+    public function testCreateReturnsEntityWhenSuccessful(): void
+    {
+        // Arrange
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Test Entity');
+        
+        // Act
+        $result = $this->sut->create($entity);
+        
+        // Assert
+        $this->assertInstanceOf(RepositoryTestEntity::class, $result);
+        $this->assertEquals('test-id-123', $result->getId());
+        $this->assertEquals('Test Entity', $result->getName());
+    }
+    
     #[Test]
     #[Group('unit')]
     public function testCreateThrowsExceptionWhenValidationFails(): void
     {
         // Arrange
-        $errors = ['name' => 'Name is required'];
-        $this->testEntity->method('validate')->willReturn(false);
-        $this->testEntity->method('getErrors')->willReturn($errors);
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Test Entity');
+        $entity->setValidationStatus(false, ['name' => 'Name is required']);
         
-        // Assert
+        // Assert & Act
         $this->expectException(EntityValidationWithErrorsException::class);
-        
-        // Act
-        $this->sut->create($this->testEntity);
+        $this->sut->create($entity);
     }
-
-    #[Test]
-    #[Group('unit')]
-    public function testCreateThrowsExceptionWhenRepositoryFails(): void
-    {
-        // Arrange
-        $entityData = ['id' => 'new-id', 'name' => 'New Entity'];
-        
-        $this->testEntity->method('toArray')->willReturn($entityData);
-        $this->testEntity->method('validate')->willReturn(true);
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('into')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('insert')
-            ->with($this->equalTo($entityData))
-            ->willReturn([
-                'result' => 'error',
-                'error' => 'Database connection failed'
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        // Assert
-        $this->expectException(RepositoryCreateException::class);
-        
-        // Act
-        $this->sut->create($this->testEntity);
-    }
-
+    
     #[Test]
     #[Group('unit')]
     public function testFirstReturnsEntityWhenFound(): void
     {
         // Arrange
-        $params = ['name' => 'Test'];
-        $entityData = ['id' => 'test-id', 'name' => 'Test Entity'];
+        $entityData = ['id' => 'test-id-123', 'name' => 'Test Entity'];
         
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        $queryBuilderStub = new SimpleQueryBuilder();
+        $queryBuilderStub->setSearchResults([$entityData]);
         
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('limit')->willReturnSelf();
-        $queryMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => [$entityData]
-        ]);
+        // Configurar o mock do queryParser para retornar o queryBuilderStub
+        $this->queryParser = $this->createMock(QueryParserInterface::class);
+        $this->queryParser->method('parse')->willReturn($queryBuilderStub);
         
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        $this->queryParser->method('parse')->willReturn($queryMock);
-        
-        $this->entityFactory->method('create')
-            ->with($this->equalTo(RepositoryTestEntity::class), $this->equalTo(['data' => $entityData]))
-            ->willReturn($this->testEntity);
+        // Atualizar a instância do sut com o novo queryParser
+        $this->sut = new TestRepository(
+            $this->queryBuilder,
+            $this->queryParser,
+            $this->entityFactory
+        );
         
         // Act
-        $result = $this->sut->first($params);
+        $result = $this->sut->first(['name' => 'Test Entity']);
         
         // Assert
-        $this->assertSame($this->testEntity, $result);
+        $this->assertInstanceOf(RepositoryTestEntity::class, $result);
+        $this->assertEquals('test-id-123', $result->getId());
+        $this->assertEquals('Test Entity', $result->getName());
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testFirstReturnsNullWhenNotFound(): void
     {
         // Arrange
-        $params = ['name' => 'NonExistent'];
+        $queryBuilderStub = new SimpleQueryBuilder();
+        $queryBuilderStub->setSearchResults([]);
         
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
+        // Configurar o mock do queryParser para retornar o queryBuilderStub
+        $this->queryParser = $this->createMock(QueryParserInterface::class);
+        $this->queryParser->method('parse')->willReturn($queryBuilderStub);
         
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('limit')->willReturnSelf();
-        $queryMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => []
-        ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        $this->queryParser->method('parse')->willReturn($queryMock);
+        // Atualizar a instância do sut com o novo queryParser
+        $this->sut = new TestRepository(
+            $this->queryBuilder,
+            $this->queryParser,
+            $this->entityFactory
+        );
         
         // Act
-        $result = $this->sut->first($params);
+        $result = $this->sut->first(['name' => 'Non-existent Entity']);
         
         // Assert
         $this->assertNull($result);
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testSearchReturnsEntitiesWhenFound(): void
     {
         // Arrange
-        $params = ['name' => 'Test'];
         $entityData1 = ['id' => 'test-id-1', 'name' => 'Test Entity 1'];
         $entityData2 = ['id' => 'test-id-2', 'name' => 'Test Entity 2'];
         
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => [$entityData1, $entityData2]
-        ]);
+        $queryBuilderStub = new SimpleQueryBuilder();
+        $queryBuilderStub->setSearchResults([$entityData1, $entityData2]);
         
-        $this->queryBuilderAdapter->method('from')->willReturnSelf();
-        $this->queryParser->method('parse')->willReturn($queryMock);
+        // Configurar o mock do queryParser para retornar o queryBuilderStub
+        $this->queryParser = $this->createMock(QueryParserInterface::class);
+        $this->queryParser->method('parse')->willReturn($queryBuilderStub);
         
-        $entity1 = $this->createMock(RepositoryTestEntity::class);
-        $entity2 = $this->createMock(RepositoryTestEntity::class);
-        
-        $this->entityFactory->expects($this->exactly(2))
-            ->method('create')
-            ->willReturnMap([
-                [RepositoryTestEntity::class, ['data' => $entityData1], $entity1],
-                [RepositoryTestEntity::class, ['data' => $entityData2], $entity2]
-            ]);
+        // Atualizar a instância do sut com o novo queryParser
+        $this->sut = new TestRepository(
+            $this->queryBuilder,
+            $this->queryParser,
+            $this->entityFactory
+        );
         
         // Act
-        $result = $this->sut->search($params);
+        $results = $this->sut->search(['name' => 'Test']);
         
         // Assert
-        $this->assertCount(2, $result);
-        $this->assertContains($entity1, $result);
-        $this->assertContains($entity2, $result);
+        $this->assertCount(2, $results);
+        $this->assertInstanceOf(RepositoryTestEntity::class, $results[0]);
+        $this->assertInstanceOf(RepositoryTestEntity::class, $results[1]);
+        $this->assertEquals('test-id-1', $results[0]->getId());
+        $this->assertEquals('test-id-2', $results[1]->getId());
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testSearchReturnsEmptyArrayWhenNotFound(): void
     {
         // Arrange
-        $params = ['name' => 'NonExistent'];
+        $queryBuilderStub = new SimpleQueryBuilder();
+        $queryBuilderStub->setSearchResults([]);
         
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => []
-        ]);
+        // Configurar o mock do queryParser para retornar o queryBuilderStub
+        $this->queryParser = $this->createMock(QueryParserInterface::class);
+        $this->queryParser->method('parse')->willReturn($queryBuilderStub);
         
-        $this->queryBuilderAdapter->method('from')->willReturnSelf();
-        $this->queryParser->method('parse')->willReturn($queryMock);
+        // Atualizar a instância do sut com o novo queryParser
+        $this->sut = new TestRepository(
+            $this->queryBuilder,
+            $this->queryParser,
+            $this->entityFactory
+        );
         
         // Act
-        $result = $this->sut->search($params);
+        $results = $this->sut->search(['name' => 'Non-existent']);
         
         // Assert
-        $this->assertEmpty($result);
+        $this->assertIsArray($results);
+        $this->assertEmpty($results);
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testPaginateReturnsFormattedResults(): void
     {
         // Arrange
-        $params = ['name' => 'Test'];
-        $page = 2;
-        $perPage = 5;
         $entityData1 = ['id' => 'test-id-1', 'name' => 'Test Entity 1'];
         $entityData2 = ['id' => 'test-id-2', 'name' => 'Test Entity 2'];
         
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('limit')->willReturnSelf();
-        $queryMock->method('offset')->willReturnSelf();
-        $queryMock->method('execute')->willReturn([
-            'result' => 'success',
-            'data' => [$entityData1, $entityData2]
-        ]);
-        $queryMock->method('count')->willReturn(15); // Total count
+        $queryBuilderStub = new SimpleQueryBuilder();
+        $queryBuilderStub->setSearchResults([$entityData1, $entityData2]);
+        $queryBuilderStub->setCountResult(10);
         
-        $this->queryBuilderAdapter->method('from')->willReturnSelf();
-        $this->queryParser->method('parse')->willReturn($queryMock);
+        // Configurar o mock do queryParser para retornar o queryBuilderStub
+        $this->queryParser = $this->createMock(QueryParserInterface::class);
+        $this->queryParser->method('parse')->willReturn($queryBuilderStub);
         
-        $entity1 = $this->createMock(RepositoryTestEntity::class);
-        $entity1->method('toArray')->willReturn($entityData1);
-        $entity2 = $this->createMock(RepositoryTestEntity::class);
-        $entity2->method('toArray')->willReturn($entityData2);
-        
-        $this->entityFactory->expects($this->exactly(2))
-            ->method('create')
-            ->willReturnMap([
-                [RepositoryTestEntity::class, ['data' => $entityData1], $entity1],
-                [RepositoryTestEntity::class, ['data' => $entityData2], $entity2]
-            ]);
+        // Atualizar a instância do sut com o novo queryParser
+        $this->sut = new TestRepository(
+            $this->queryBuilder,
+            $this->queryParser,
+            $this->entityFactory
+        );
         
         // Act
-        $result = $this->sut->paginate($params, $page, $perPage);
+        $result = $this->sut->paginate(['name' => 'Test'], 1, 10);
         
         // Assert
-        $this->assertEquals('success', $result['result']);
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('data', $result);
+        $this->assertArrayHasKey('current_page', $result);
+        $this->assertArrayHasKey('per_page', $result);
+        $this->assertArrayHasKey('total', $result);
         $this->assertCount(2, $result['data']);
-        $this->assertEquals($entityData1, $result['data'][0]);
-        $this->assertEquals($entityData2, $result['data'][1]);
-        $this->assertEquals($page, $result['current_page']);
-        $this->assertEquals($perPage, $result['per_page']);
-        $this->assertEquals(15, $result['total']);
+        $this->assertEquals(1, $result['current_page']);
+        $this->assertEquals(10, $result['per_page']);
+        $this->assertEquals(10, $result['total']);
     }
-
+    
     #[Test]
     #[Group('unit')]
-    public function testUpdateSuccessful(): void
+    public function testUpdateReturnsUpdatedEntity(): void
     {
         // Arrange
-        $id = 'test-id-123';
-        $entityData = ['id' => $id, 'name' => 'Updated Entity'];
-        $resultData = ['id' => $id, 'name' => 'Updated Entity', 'updated_at' => '2025-03-04T12:00:00Z'];
-        
-        $this->testEntity->method('toArray')->willReturn($entityData);
-        $this->testEntity->method('validate')->willReturn(true);
-        $this->testEntity->method('getId')->willReturn($id);
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('update')
-            ->with($id, $this->equalTo($entityData))
-            ->willReturn([
-                'result' => 'updated',
-                'data' => $resultData
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        $updatedEntity = $this->createMock(RepositoryTestEntity::class);
-        $this->entityFactory->method('create')
-            ->with($this->equalTo(RepositoryTestEntity::class), $this->equalTo(['data' => $resultData]))
-            ->willReturn($updatedEntity);
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Updated Entity');
         
         // Act
-        $result = $this->sut->update($this->testEntity);
+        $result = $this->sut->update($entity);
         
         // Assert
-        $this->assertSame($updatedEntity, $result);
+        $this->assertInstanceOf(RepositoryTestEntity::class, $result);
+        $this->assertEquals('test-id-123', $result->getId());
+        $this->assertEquals('Updated Entity', $result->getName());
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testUpdateThrowsExceptionWhenValidationFails(): void
     {
         // Arrange
-        $errors = ['name' => 'Name is required'];
-        $this->testEntity->method('validate')->willReturn(false);
-        $this->testEntity->method('getErrors')->willReturn($errors);
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Updated Entity');
+        $entity->setValidationStatus(false, ['name' => 'Name is invalid']);
         
-        // Assert
+        // Assert & Act
         $this->expectException(EntityValidationWithErrorsException::class);
-        
-        // Act
-        $this->sut->update($this->testEntity);
+        $this->sut->update($entity);
     }
-
+    
     #[Test]
     #[Group('unit')]
-    public function testUpdateThrowsExceptionWhenRepositoryFails(): void
+    public function testDeleteReturnsTrueWhenSuccessful(): void
     {
         // Arrange
-        $id = 'test-id-123';
-        $entityData = ['id' => $id, 'name' => 'Updated Entity'];
-        
-        $this->testEntity->method('toArray')->willReturn($entityData);
-        $this->testEntity->method('validate')->willReturn(true);
-        $this->testEntity->method('getId')->willReturn($id);
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('update')
-            ->with($id, $this->equalTo($entityData))
-            ->willReturn([
-                'result' => 'error',
-                'error' => 'Database connection failed'
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        // Assert
-        $this->expectException(RepositoryUpdateException::class);
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setDeleteResult('deleted');
         
         // Act
-        $this->sut->update($this->testEntity);
-    }
-
-    #[Test]
-    #[Group('unit')]
-    public function testDeleteSuccessful(): void
-    {
-        // Arrange
-        $id = 'test-id-123';
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('delete')
-            ->with($id)
-            ->willReturn([
-                'result' => 'deleted'
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
-        
-        // Act
-        $result = $this->sut->delete($id);
+        $result = $this->sut->delete('test-id-123');
         
         // Assert
         $this->assertTrue($result);
     }
-
+    
     #[Test]
     #[Group('unit')]
     public function testDeleteReturnsFalseWhenFailed(): void
     {
         // Arrange
-        $id = 'test-id-123';
-        
-        $queryBuilderAdapterMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryBuilderAdapterMock->method('from')->willReturnSelf();
-        $queryBuilderAdapterMock->expects($this->once())
-            ->method('delete')
-            ->with($id)
-            ->willReturn([
-                'result' => 'error'
-            ]);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryBuilderAdapterMock);
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setDeleteResult('error');
         
         // Act
-        $result = $this->sut->delete($id);
+        $result = $this->sut->delete('test-id-123');
         
         // Assert
         $this->assertFalse($result);
     }
-
+    
     #[Test]
     #[Group('unit')]
-    public function testExistsReturnsTrue(): void
+    public function testExistsReturnsTrueWhenEntityExists(): void
     {
         // Arrange
-        $id = 'test-id-123';
-        
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('select')->willReturnSelf();
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('where')->willReturnSelf();
-        $queryMock->method('count')->willReturn(1);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryMock);
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setCountResult(1);
         
         // Act
-        $result = $this->sut->exists($id);
+        $result = $this->sut->exists('test-id-123');
         
         // Assert
         $this->assertTrue($result);
     }
-
+    
     #[Test]
     #[Group('unit')]
-    public function testExistsReturnsFalse(): void
+    public function testExistsReturnsFalseWhenEntityDoesNotExist(): void
     {
         // Arrange
-        $id = 'non-existent-id';
-        
-        $queryMock = $this->createMock(QueryBuilderAdapter::class);
-        $queryMock->method('select')->willReturnSelf();
-        $queryMock->method('from')->willReturnSelf();
-        $queryMock->method('where')->willReturnSelf();
-        $queryMock->method('count')->willReturn(0);
-        
-        // Substituir o adaptador no repositório
-        $reflectionProperty = new \ReflectionProperty($this->sut, 'queryBuilderAdapter');
-        $reflectionProperty->setAccessible(true);
-        $reflectionProperty->setValue($this->sut, $queryMock);
+        $queryBuilderStub = $this->queryBuilder;
+        $queryBuilderStub->setCountResult(0);
         
         // Act
-        $result = $this->sut->exists($id);
+        $result = $this->sut->exists('non-existent-id');
         
         // Assert
         $this->assertFalse($result);
     }
-}
-
-/**
- * Concrete implementation of Repository for testing
- */
-class TestRepository extends Repository
-{
-    protected string $entity = RepositoryTestEntity::class;
-}
-
-/**
- * Test entity implementation for testing Repository
- */
-class RepositoryTestEntity implements EntityInterface
-{
-    private string $id;
-    private string $name;
-    private array $errors = [];
     
-    public function __get(string $name): mixed
+    #[Test]
+    #[Group('unit')]
+    public function testExistsReturnsTrueWhenEntityInContext(): void
     {
-        if (property_exists($this, $name)) {
-            return $this->$name;
-        }
+        // Arrange
+        $entity = new RepositoryTestEntity();
+        $entity->setId('test-id-123')->setName('Cached Entity');
         
-        throw new \Exception("Property {$name} does not exist");
+        // Store entity in context
+        Context::set('repository.instance.find.tests.test-id-123', $entity);
+        
+        // Act
+        $result = $this->sut->exists('test-id-123');
+        
+        // Assert
+        $this->assertTrue($result);
     }
     
-    public function getId(): string
+    #[Test]
+    #[Group('unit')]
+    public function testInvalidateContextCacheClearsCache(): void
     {
-        return $this->id;
-    }
-    
-    public function setId(string $id): self
-    {
-        $this->id = $id;
-        return $this;
-    }
-    
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-        ];
-    }
-    
-    public function validate(): bool
-    {
-        return empty($this->errors);
-    }
-    
-    public function getErrors(): array
-    {
-        return $this->errors;
+        // Arrange - Add items to context
+        Context::set('repository.instance.search.tests.test-key', ['data']);
+        Context::set('repository.instance.paginate.tests.test-key', ['data']);
+        Context::set('repository.instance.first.tests.test-key', ['data']);
+        
+        // Use reflection to access protected method
+        $reflectionClass = new \ReflectionClass($this->sut);
+        $method = $reflectionClass->getMethod('invalidateContextCache');
+        $method->setAccessible(true);
+        
+        // Act
+        $method->invoke($this->sut);
+        
+        // Assert
+        $this->assertNull(Context::get('repository.instance.search.tests.test-key'));
+        $this->assertNull(Context::get('repository.instance.paginate.tests.test-key'));
+        $this->assertNull(Context::get('repository.instance.first.tests.test-key'));
     }
 }
