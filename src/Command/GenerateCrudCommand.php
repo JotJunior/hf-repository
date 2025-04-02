@@ -9,6 +9,7 @@ use Hyperf\Command\Annotation\Command;
 use Hyperf\Stringable\Str;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Console\Input\InputOption;
+use function Hyperf\Translation\__;
 
 #[Command]
 class GenerateCrudCommand extends AbstractCommand
@@ -19,7 +20,7 @@ class GenerateCrudCommand extends AbstractCommand
     public function configure(): void
     {
         parent::configure();
-        $this->setDescription('Creates a complete crud controller for a given Elasticsearch index.');
+        $this->setDescription(__('hf-repository.command.crud_description'));
         $this->addUsage('repo:crud --index=index_name [--api-version=v1] [--force]');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
         $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
@@ -34,7 +35,7 @@ class GenerateCrudCommand extends AbstractCommand
         $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
 
         if (!$this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
-            $this->line(sprintf('Index <fg=yellow>%s</> does not exist.', $this->getIndexName(removePrefix: false)));
+            $this->line(sprintf(__('hf-repository.command.index_not_exists'), $this->getIndexName(removePrefix: false)));
             $this->newLine();
             return;
         }
@@ -47,17 +48,17 @@ class GenerateCrudCommand extends AbstractCommand
         $this->line('The elasticsearch index related entities, repository and controller will be created during this process.');
 
         $this->newLine();
-        $confirmation = $this->ask(sprintf('Are you sure you want to create a CRUD for index <fg=yellow>%s</>? [Y/n]', $indexName), 'Y');
+        $confirmation = $this->ask(sprintf(__('hf-repository.command.confirm_crud_creation'), $indexName), 'Y');
         if (!Str::contains($confirmation, ['y', 'Y', 'yes'])) {
-            $this->line('Aborting...');
+            $this->line(__('hf-repository.command.aborting'));
             return;
         }
 
         $this->newLine();
-        $this->line(sprintf('Creating the CRUD for index <fg=yellow>%s</>...', $indexName));
+        $this->line(sprintf(__('hf-repository.command.creating_crud'), $indexName));
 
         $this->newLine();
-        $this->line('Start creating entities...');
+        $this->line(__('hf-repository.command.start_creating_entities'));
         $this->createEntities($indexName);
 
         $this->newLine();

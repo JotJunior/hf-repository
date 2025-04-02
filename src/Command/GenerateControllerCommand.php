@@ -6,6 +6,7 @@ namespace Jot\HfRepository\Command;
 
 use Hyperf\Command\Annotation\Command;
 use Symfony\Component\Console\Input\InputOption;
+use function Hyperf\Translation\__;
 
 #[Command]
 class GenerateControllerCommand extends AbstractCommand
@@ -16,7 +17,7 @@ class GenerateControllerCommand extends AbstractCommand
     public function configure(): void
     {
         parent::configure();
-        $this->setDescription('Create a repository based controller class based on an elasticsearch index.');
+        $this->setDescription(__('hf-repository.command.controller_description'));
         $this->addUsage('repo:controller --index=index_name [--api-version=v1] [--force]');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
         $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
