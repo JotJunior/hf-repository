@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Query;
 
-use Jot\HfElastic\QueryBuilder;
-use Jot\HfRepository\Adapter\QueryBuilderAdapter;
+use Jot\HfElastic\Contracts\QueryBuilderInterface;
 
 /**
  * Default implementation of QueryParserInterface.
- * 
+ *
  * This class is responsible for parsing query parameters into QueryBuilder instances.
  * It follows the Single Responsibility Principle by focusing solely on query parsing.
  */
@@ -22,10 +21,10 @@ class QueryParser implements QueryParserInterface
      *                      - '_fields' for selecting specific fields
      *                      - '_sort' for defining sorting order
      *                      - Other key-value pairs for filtering conditions
-     * @param QueryBuilder|QueryBuilderAdapter $queryBuilder The base query builder to modify
-     * @return QueryBuilder|QueryBuilderAdapter The constructed QueryBuilder instance reflecting the parsed parameters
+     * @param QueryBuilderInterface $queryBuilder The base query builder to modify
+     * @return QueryBuilderInterface The constructed QueryBuilder instance reflecting the parsed parameters
      */
-    public function parse(array $params, $queryBuilder)
+    public function parse(array $params, QueryBuilderInterface $queryBuilder): QueryBuilderInterface
     {
         // Select fields
         $queryBuilder->select(explode(',', $params['_fields'] ?? '*'));
@@ -43,9 +42,9 @@ class QueryParser implements QueryParserInterface
             if (str_starts_with($key, '_')) {
                 continue;
             }
-            $queryBuilder->where($key, $value);
+            $queryBuilder->where($key, '=', $value);
         }
-        
+
         return $queryBuilder;
     }
 }

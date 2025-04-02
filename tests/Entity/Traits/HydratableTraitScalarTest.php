@@ -75,8 +75,8 @@ class HydratableTraitScalarTest extends TestCase
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertInstanceOf(RelatedEntityWithoutHydrate::class, $this->sut->relatedEntityWithoutHydrate);
-        // The scalar value should be ignored since the class doesn't have a hydrate method
-        $this->assertNull($this->sut->relatedEntityWithoutHydrate->id);
+        // O valor escalar deve ser atribuído ao ID mesmo que a classe não tenha método hydrate
+        $this->assertEquals(789, $this->sut->relatedEntityWithoutHydrate->id);
     }
 }
 

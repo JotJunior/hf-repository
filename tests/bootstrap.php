@@ -14,3 +14,6 @@ require BASE_PATH . '/vendor/autoload.php';
 
 ! defined('SWOOLE_HOOK_FLAGS') && define('SWOOLE_HOOK_FLAGS', Hyperf\Engine\DefaultOption::hookFlags());
 
+// Carregar funções globais para testes
+require_once __DIR__ . '/Stubs/global_functions.php';
+

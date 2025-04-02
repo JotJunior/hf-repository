@@ -29,11 +29,36 @@ class EntityFactory implements EntityFactoryInterface
         if ($constructor) {
             $params = $constructor->getParameters();
             if (count($params) === 1 && $params[0]->getType() && $params[0]->getType()->getName() === 'array') {
+                // Constructor expects a single array parameter
                 return make($entityClass, ['data' => $data]);
+            } else {
+                // Constructor expects individual parameters
+                // Map data array keys to constructor parameter names
+                $constructorArgs = [];
+                foreach ($params as $param) {
+                    $paramName = $param->getName();
+                    if (array_key_exists($paramName, $data)) {
+                        $constructorArgs[$paramName] = $data[$paramName];
+                    }
+                }
+                return make($entityClass, $constructorArgs);
             }
         }
 
-        return make($entityClass, ['data' => $data]);
+        // Fallback to creating without constructor arguments
+        $instance = $reflection->newInstance();
+        
+        // Set public properties directly
+        foreach ($data as $key => $value) {
+            if ($reflection->hasProperty($key)) {
+                $property = $reflection->getProperty($key);
+                if ($property->isPublic()) {
+                    $instance->$key = $value;
+                }
+            }
+        }
+        
+        return $instance;
     }
 
 }

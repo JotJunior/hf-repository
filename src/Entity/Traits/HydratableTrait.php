@@ -134,6 +134,31 @@ trait HydratableTrait
             return;
         }
 
+        // Tratar valores escalares ou arrays quando não há EntityFactory
+        if (is_scalar($value) || is_array($value)) {
+            // Verificar se a classe relacionada tem um método hydrate
+            if (method_exists($relatedClass, 'hydrate')) {
+                $instance = new $relatedClass();
+                if (is_scalar($value)) {
+                    // Para valores escalares, assumimos que é o ID
+                    $instance->hydrate(['id' => $value]);
+                } else {
+                    // Para arrays, passamos diretamente para hydrate
+                    $instance->hydrate($value);
+                }
+                $this->$property = $instance;
+            } else if (is_array($value)) {
+                // Se não tem método hydrate mas é um array, tentamos criar a instância com o construtor
+                $this->$property = new $relatedClass($value);
+            } else if (is_scalar($value)) {
+                // Para valores escalares em classes sem hydrate, criamos a instância e tentamos definir o ID
+                $instance = new $relatedClass();
+                if (property_exists($instance, 'id')) {
+                    $instance->id = $value;
+                }
+                $this->$property = $instance;
+            }
+        }
     }
 
     /**
