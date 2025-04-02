@@ -12,7 +12,9 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Exception\Handler;
 
+use Hyperf\Context\ApplicationContext;
 use Hyperf\Contract\StdoutLoggerInterface;
+use Hyperf\Contract\TranslatorInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\RateLimit\Exception\RateLimitException;
@@ -27,7 +29,7 @@ class ControllerExceptionHandler extends ExceptionHandler
     private const EXCEPTION_HANDLERS = [
         RateLimitException::class => [
             'status' => 429,
-            'message' => 'Too Many Requests.'
+            'handler' => 'handleRateLimitException'
         ],
         EntityValidationWithErrorsException::class => [
             'status' => 400,
@@ -93,7 +95,10 @@ class ControllerExceptionHandler extends ExceptionHandler
     private function formatValidationErrorMessage(array $errors): string
     {
         if (count($errors) > 1) {
-            return sprintf('%s (and %d more errors)', current($errors)[0], count($errors) - 1);
+            return __('hf-repository.validation_error_with_count', [
+                current($errors)[0],
+                count($errors) - 1
+            ]);
         }
 
         return current($errors)[0];
@@ -106,6 +111,18 @@ class ControllerExceptionHandler extends ExceptionHandler
     {
         return $this->createJsonResponse($response, 400, [
             'message' => $exception->getMessage()
+        ]);
+    }
+    
+    private function handleRateLimitException(
+        RateLimitException $exception,
+        ResponseInterface $response
+    ): ResponseInterface
+    {
+        $message = __('hf-repository.too_many_requests');
+        
+        return $this->createJsonResponse($response, 429, [
+            'message' => $message
         ]);
     }
 }

@@ -126,13 +126,15 @@ abstract class Repository implements RepositoryInterface
             ->insert($entity->toArray());
 
         if ($result['result'] !== 'created') {
-            throw new RepositoryCreateException($result['error'] ?? 'Failed to create entity');
+            $message = __('hf-repository.failed_create_entity');
+            throw new RepositoryCreateException($result['error'] ?? $message);
         }
 
         $createdEntity = $this->entityFactory->create($this->entity, $result['data']);
 
         if (!$createdEntity instanceof EntityInterface) {
-            throw new RepositoryCreateException('Failed to create entity instance');
+            $message = __('hf-repository.failed_create_entity_instance');
+            throw new RepositoryCreateException($message);
         }
 
         // Store in context for this coroutine if it has an ID
@@ -329,7 +331,8 @@ abstract class Repository implements RepositoryInterface
             ->update($entity->getId(), $entity->toArray());
 
         if (!in_array($result['result'], ['updated', 'noop'])) {
-            throw new RepositoryUpdateException($result['error'] ?? 'Failed to update entity');
+            $message = __('hf-repository.failed_update_entity');
+            throw new RepositoryUpdateException($result['error'] ?? $message);
         }
 
         $updatedEntity = $this->entityFactory->create($this->entity, $result['data']);

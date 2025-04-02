@@ -3,6 +3,7 @@
 namespace Jot\HfRepository;
 
 use Hyperf\Swagger\HttpServer;
+use Hyperf\Translation\ConfigProvider as TranslationConfigProvider;
 use Jot\HfRepository\Command\GenerateControllerCommand;
 use Jot\HfRepository\Command\GenerateCrudCommand;
 use Jot\HfRepository\Command\GenerateRepositoryCommand;
@@ -41,7 +42,20 @@ class ConfigProvider
             'listeners' => [
                 RequiredConfigListener::class,
             ],
-            'publish' => [],
+            'publish' => [
+                [
+                    'id' => 'translation',
+                    'description' => 'The translation messages for hf-repository.',
+                    'source' => __DIR__ . '/../storage/languages',
+                    'destination' => BASE_PATH . '/storage/languages',
+                ],
+                [
+                    'id' => 'config',
+                    'description' => 'The config for hf-repository.',
+                    'source' => __DIR__ . '/../config/autoload/translation.php',
+                    'destination' => BASE_PATH . '/config/autoload/translation.php',
+                ],
+            ],
             'exceptions' => [
                 'handler' => [
                     'http' => [

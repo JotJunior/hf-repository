@@ -1,16 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Jot\HfRepository\Exception;
 
 class EntityValidationWithErrorsException extends \Exception
 {
-
-    protected $message = 'Validation errors:';
     protected array $errors;
 
     public function __construct(array $errors, int $code = 0, \Throwable $previous = null)
     {
-        parent::__construct($this->message, $code, $previous);
+        $message = __('hf-repository.validation_errors');
+        parent::__construct($message, $code, $previous);
         $this->errors = $errors;
     }
 
@@ -18,5 +19,4 @@ class EntityValidationWithErrorsException extends \Exception
     {
         return $this->errors;
     }
-
 }
