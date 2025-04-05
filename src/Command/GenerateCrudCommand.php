@@ -1,20 +1,25 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Command;
 
-use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Command\Annotation\Command;
 use Hyperf\Stringable\Str;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\Console\Input\InputOption;
+
 use function Hyperf\Translation\__;
 
 #[Command]
 class GenerateCrudCommand extends AbstractCommand
 {
-
     protected string $command = 'repo:crud';
 
     public function configure(): void
@@ -30,11 +35,10 @@ class GenerateCrudCommand extends AbstractCommand
 
     public function handle()
     {
-
         $indexName = $this->getIndexName();
         $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
 
-        if (!$this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
+        if (! $this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
             $this->line(sprintf(__('hf-repository.command.index_not_exists'), $this->getIndexName(removePrefix: false)));
             $this->newLine();
             return;
@@ -49,7 +53,7 @@ class GenerateCrudCommand extends AbstractCommand
 
         $this->newLine();
         $confirmation = $this->ask(sprintf(__('hf-repository.command.confirm_crud_creation'), $indexName), 'Y');
-        if (!Str::contains($confirmation, ['y', 'Y', 'yes'])) {
+        if (! Str::contains($confirmation, ['y', 'Y', 'yes'])) {
             $this->line(__('hf-repository.command.aborting'));
             return;
         }
@@ -70,7 +74,5 @@ class GenerateCrudCommand extends AbstractCommand
         $this->createController($indexName, $apiVersion);
 
         $this->newLine();
-
     }
-
 }

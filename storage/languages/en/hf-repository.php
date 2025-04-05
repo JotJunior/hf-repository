@@ -1,7 +1,13 @@
 <?php
 
 declare(strict_types=1);
-
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 return [
     // Exception messages
     'invalid_entity' => 'Invalid entity',
@@ -36,6 +42,6 @@ return [
         'controller_description' => 'Create a repository based controller class based on an elasticsearch index.',
         'crud_description' => 'Creates a complete crud controller for a given Elasticsearch index.',
         'entity_description' => 'Creating entity classes based on the elasticsearch mapping configuration.',
-        'repository_description' => 'Create a repository class.'
-    ]
+        'repository_description' => 'Create a repository class.',
+    ],
 ];

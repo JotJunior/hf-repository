@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Stubs;
 
@@ -12,29 +19,17 @@ use Jot\HfElastic\Contracts\QueryBuilderInterface;
  */
 class SimpleQueryBuilder implements QueryBuilderInterface
 {
-    /**
-     * @var array
-     */
     private array $mockResults = [
         'result' => 'success',
-        'data' => [['id' => 'test-id-123', 'name' => 'Updated Entity']]
+        'data' => [['id' => 'test-id-123', 'name' => 'Updated Entity']],
     ];
 
-    /**
-     * @var int
-     */
     private int $countResult = 1;
 
-    /**
-     * @var string
-     */
     private string $deleteResult = 'deleted';
 
     /**
-     * Select fields from the index
-     * 
-     * @param array|string $fields
-     * @return QueryBuilderInterface
+     * Select fields from the index.
      */
     public function select(array|string $fields = '*'): QueryBuilderInterface
     {
@@ -42,10 +37,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set the index to query from
-     * 
-     * @param string $index
-     * @return QueryBuilderInterface
+     * Set the index to query from.
      */
     public function from(string $index): QueryBuilderInterface
     {
@@ -53,10 +45,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set the index to insert into
-     * 
-     * @param string $index
-     * @return QueryBuilderInterface
+     * Set the index to insert into.
      */
     public function into(string $index): QueryBuilderInterface
     {
@@ -64,13 +53,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Add a where condition
-     * 
-     * @param string $field
-     * @param mixed $operator
-     * @param mixed $value
-     * @param string $context
-     * @return QueryBuilderInterface
+     * Add a where condition.
      */
     public function where(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
     {
@@ -78,10 +61,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set limit for query
-     * 
-     * @param int $limit
-     * @return QueryBuilderInterface
+     * Set limit for query.
      */
     public function limit(int $limit): QueryBuilderInterface
     {
@@ -89,10 +69,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set offset for query
-     * 
-     * @param int $offset
-     * @return QueryBuilderInterface
+     * Set offset for query.
      */
     public function offset(int $offset): QueryBuilderInterface
     {
@@ -100,52 +77,40 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Insert a record
-     * 
-     * @param array $data
-     * @return array
+     * Insert a record.
      */
     public function insert(array $data): array
     {
         return [
             'result' => 'created',
-            'data' => $data
+            'data' => $data,
         ];
     }
 
     /**
-     * Update a record
-     * 
-     * @param string $id
-     * @param array $data
-     * @return array
+     * Update a record.
      */
     public function update(string $id, array $data): array
     {
         return [
             'result' => 'updated',
-            'data' => $data
+            'data' => $data,
         ];
     }
 
     /**
-     * Delete a record
-     * 
-     * @param string $id
-     * @return array
+     * Delete a record.
      */
     public function delete(string $id): array
     {
         return [
             'result' => $this->deleteResult,
-            'affected' => $this->deleteResult === 'deleted' ? 1 : 0
+            'affected' => $this->deleteResult === 'deleted' ? 1 : 0,
         ];
     }
 
     /**
-     * Count records
-     * 
-     * @return int
+     * Count records.
      */
     public function count(): int
     {
@@ -153,9 +118,7 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Execute the query and return results
-     * 
-     * @return array
+     * Execute the query and return results.
      */
     public function execute(): array
     {
@@ -163,24 +126,22 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set the search results for testing
-     * 
-     * @param array $results
+     * Set the search results for testing.
+     *
      * @return $this
      */
     public function setSearchResults(array $results): self
     {
         $this->mockResults = [
             'result' => 'success',
-            'data' => $results
+            'data' => $results,
         ];
         return $this;
     }
 
     /**
-     * Set the count result for testing
-     * 
-     * @param int $count
+     * Set the count result for testing.
+     *
      * @return $this
      */
     public function setCountResult(int $count): self
@@ -190,9 +151,8 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     /**
-     * Set the delete result for testing
-     * 
-     * @param string $result
+     * Set the delete result for testing.
+     *
      * @return $this
      */
     public function setDeleteResult(string $result): self
@@ -202,17 +162,68 @@ class SimpleQueryBuilder implements QueryBuilderInterface
     }
 
     // Implementações vazias para os métodos restantes da interface
-    public function andWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface { return $this; }
-    public function orWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface { return $this; }
-    public function whereMust(callable $callback): QueryBuilderInterface { return $this; }
-    public function whereMustNot(callable $callback): QueryBuilderInterface { return $this; }
-    public function whereShould(callable $callback): QueryBuilderInterface { return $this; }
-    public function whereFilter(callable $callback): QueryBuilderInterface { return $this; }
-    public function whereNested(string $field, callable $callback): QueryBuilderInterface { return $this; }
-    public function geoDistance(string $field, string $location, string $distance): QueryBuilderInterface { return $this; }
-    public function withSuffix(string $suffix): QueryBuilderInterface { return $this; }
-    public function orderBy(string $field, string $direction = 'asc'): QueryBuilderInterface { return $this; }
-    public function raw(array $query): QueryBuilderInterface { return $this; }
-    public function join(array|string $index): QueryBuilderInterface { return $this; }
-    public function toArray(): array { return []; }
+    public function andWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function orWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function whereMust(callable $callback): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function whereMustNot(callable $callback): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function whereShould(callable $callback): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function whereFilter(callable $callback): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function whereNested(string $field, callable $callback): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function geoDistance(string $field, string $location, string $distance): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function withSuffix(string $suffix): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function orderBy(string $field, string $direction = 'asc'): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function raw(array $query): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function join(array|string $index): QueryBuilderInterface
+    {
+        return $this;
+    }
+
+    public function toArray(): array
+    {
+        return [];
+    }
 }

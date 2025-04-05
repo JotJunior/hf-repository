@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
@@ -11,6 +18,9 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(EntityStateTrait::class)]
 class EntityStateTraitTest extends TestCase
 {
@@ -32,14 +42,14 @@ class EntityStateTraitTest extends TestCase
         // Assert
         $this->assertEquals(EntityStateTraitTestClass::STATE_CREATE, $result);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testGetEntityStateReturnsUpdatedState(): void
     {
         // Arrange
         $this->sut->setEntityState(EntityStateTraitTestClass::STATE_UPDATE);
-        
+
         // Act
         $result = $this->sut->getEntityState();
 
@@ -72,7 +82,7 @@ class EntityStateTraitTest extends TestCase
 
         // Assert
         $this->expectException(EntityValidationWithErrorsException::class);
-        
+
         // Act
         $this->sut->setEntityState($invalidState);
     }
@@ -98,16 +108,17 @@ class EntityStateTraitTest extends TestCase
 }
 
 /**
- * Test class that uses EntityStateTrait
+ * Test class that uses EntityStateTrait.
  */
 class EntityStateTraitTestClass
 {
     use EntityStateTrait;
-    
+
     // Define constants here to avoid accessing trait constants directly
     public const STATE_CREATE = 'create';
+
     public const STATE_UPDATE = 'update';
-    
+
     public function getEntityState(): string
     {
         return $this->entityState;

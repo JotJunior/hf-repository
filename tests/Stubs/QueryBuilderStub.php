@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Stubs;
 
@@ -11,69 +18,45 @@ use Jot\HfElastic\Contracts\QueryBuilderInterface;
  */
 class QueryBuilderStub implements QueryBuilderInterface
 {
-    /**
-     * @var array
-     */
     private array $mockResults = [
         'select' => [
             'result' => 'success',
-            'data' => [['data' => ['id' => 'test-id-123', 'name' => 'Test Entity']]]
+            'data' => [['data' => ['id' => 'test-id-123', 'name' => 'Test Entity']]],
         ],
         'insert' => [
             'result' => 'created',
             'id' => 'test-id-123',
-            'data' => ['id' => 'test-id-123', 'name' => 'Test Entity']
+            'data' => ['id' => 'test-id-123', 'name' => 'Test Entity'],
         ],
         'update' => [
             'result' => 'updated',
             'affected' => 1,
-            'data' => ['id' => 'test-id-123', 'name' => 'Test Entity']
+            'data' => ['id' => 'test-id-123', 'name' => 'Test Entity'],
         ],
         'delete' => [
             'result' => 'deleted',
-            'affected' => 1
+            'affected' => 1,
         ],
         'count' => [
             'result' => 'success',
-            'count' => 1
-        ]
+            'count' => 1,
+        ],
     ];
 
-    /**
-     * @var string
-     */
     private string $lastOperation = 'select';
 
-    /**
-     * @var array
-     */
     private array $conditions = [];
 
-    /**
-     * @var int
-     */
     private int $limitValue = 10;
 
-    /**
-     * @var int
-     */
     private int $offsetValue = 0;
 
-    /**
-     * @var string
-     */
     private string $indexName = '';
 
-    /**
-     * @var array
-     */
     private array $fields = ['*'];
 
     /**
-     * Select fields from the index
-     * 
-     * @param array|string $fields
-     * @return QueryBuilderInterface
+     * Select fields from the index.
      */
     public function select(array|string $fields = '*'): QueryBuilderInterface
     {
@@ -83,10 +66,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the index to query from
-     * 
-     * @param string $index
-     * @return QueryBuilderInterface
+     * Set the index to query from.
      */
     public function from(string $index): QueryBuilderInterface
     {
@@ -95,10 +75,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the index to insert into
-     * 
-     * @param string $index
-     * @return QueryBuilderInterface
+     * Set the index to insert into.
      */
     public function into(string $index): QueryBuilderInterface
     {
@@ -107,13 +84,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Add a where condition
-     * 
-     * @param string $field
-     * @param mixed $operator
-     * @param mixed $value
-     * @param string $context
-     * @return QueryBuilderInterface
+     * Add a where condition.
      */
     public function where(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
     {
@@ -125,17 +96,14 @@ class QueryBuilderStub implements QueryBuilderInterface
         $this->conditions[] = [
             'field' => $field,
             'operator' => $operator,
-            'value' => $value
+            'value' => $value,
         ];
 
         return $this;
     }
 
     /**
-     * Set limit for query
-     * 
-     * @param int $limit
-     * @return QueryBuilderInterface
+     * Set limit for query.
      */
     public function limit(int $limit): QueryBuilderInterface
     {
@@ -144,10 +112,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set offset for query
-     * 
-     * @param int $offset
-     * @return QueryBuilderInterface
+     * Set offset for query.
      */
     public function offset(int $offset): QueryBuilderInterface
     {
@@ -156,10 +121,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Insert a record
-     * 
-     * @param array $data
-     * @return array
+     * Insert a record.
      */
     public function insert(array $data): array
     {
@@ -168,11 +130,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Update a record
-     * 
-     * @param string $id
-     * @param array $data
-     * @return array
+     * Update a record.
      */
     public function update(string $id, array $data): array
     {
@@ -181,10 +139,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Delete a record
-     * 
-     * @param string $id
-     * @return array
+     * Delete a record.
      */
     public function delete(string $id): array
     {
@@ -193,9 +148,7 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Count records
-     * 
-     * @return int
+     * Count records.
      */
     public function count(): int
     {
@@ -203,105 +156,71 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Join with another index
-     * 
-     * @param array|string $index
-     * @return QueryBuilderInterface
+     * Join with another index.
      */
     public function join(array|string $index): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a where condition with AND operator
-     *
-     * @param string $field
-     * @param mixed $operator
-     * @param mixed $value
-     * @param string $context
-     * @return QueryBuilderInterface
+     * Add a where condition with AND operator.
      */
     public function andWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
     {
         return $this->where($field, $operator, $value, $context);
     }
-    
+
     /**
-     * Add a where condition with OR operator
-     *
-     * @param string $field
-     * @param mixed $operator
-     * @param mixed $value
-     * @param string $context
-     * @return QueryBuilderInterface
+     * Add a where condition with OR operator.
      */
     public function orWhere(string $field, mixed $operator, mixed $value = null, string $context = 'must'): QueryBuilderInterface
     {
         return $this->where($field, $operator, $value, $context);
     }
-    
+
     /**
-     * Add a where condition with MUST context
-     *
-     * @param callable $callback
-     * @return QueryBuilderInterface
+     * Add a where condition with MUST context.
      */
     public function whereMust(callable $callback): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a where condition with MUST_NOT context
-     *
-     * @param callable $callback
-     * @return QueryBuilderInterface
+     * Add a where condition with MUST_NOT context.
      */
     public function whereMustNot(callable $callback): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a where condition with SHOULD context
-     *
-     * @param callable $callback
-     * @return QueryBuilderInterface
+     * Add a where condition with SHOULD context.
      */
     public function whereShould(callable $callback): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a where condition with FILTER context
-     *
-     * @param callable $callback
-     * @return QueryBuilderInterface
+     * Add a where condition with FILTER context.
      */
     public function whereFilter(callable $callback): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a sort condition
-     *
-     * @param string $field
-     * @param string $direction
-     * @return QueryBuilderInterface
+     * Add a sort condition.
      */
     public function orderBy(string $field, string $direction = 'asc'): QueryBuilderInterface
     {
         return $this;
     }
-    
+
     /**
-     * Add a raw query condition
-     *
-     * @param array $query
-     * @return QueryBuilderInterface
+     * Add a raw query condition.
      */
     public function raw(array $query): QueryBuilderInterface
     {
@@ -309,27 +228,25 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Execute the query and return results
-     * 
-     * @return array
+     * Execute the query and return results.
      */
     public function execute(): array
     {
         if ($this->lastOperation === 'select') {
             return $this->mockResults[$this->lastOperation];
-        } elseif ($this->lastOperation === 'insert' || $this->lastOperation === 'update') {
+        }
+        if ($this->lastOperation === 'insert' || $this->lastOperation === 'update') {
             return [
                 'result' => $this->mockResults[$this->lastOperation]['result'],
-                'data' => $this->mockResults[$this->lastOperation]['data']
+                'data' => $this->mockResults[$this->lastOperation]['data'],
             ];
-        } else {
-            return $this->mockResults[$this->lastOperation];
         }
+        return $this->mockResults[$this->lastOperation];
     }
 
     /**
-     * Simulate PHPUnit's willReturnSelf() for mocks
-     * 
+     * Simulate PHPUnit's willReturnSelf() for mocks.
+     *
      * @return $this
      */
     public function willReturnSelf(): self
@@ -338,9 +255,8 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the count result for testing exists() method
-     * 
-     * @param int $count
+     * Set the count result for testing exists() method.
+     *
      * @return $this
      */
     public function setCountResult(int $count): self
@@ -350,8 +266,8 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the delete result for testing delete() method
-     * 
+     * Set the delete result for testing delete() method.
+     *
      * @param string $result 'success' or 'error'
      * @return $this
      */
@@ -368,8 +284,8 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the search results for testing search() method
-     * 
+     * Set the search results for testing search() method.
+     *
      * @param array $results Array of entity data
      * @return $this
      */
@@ -384,8 +300,8 @@ class QueryBuilderStub implements QueryBuilderInterface
     }
 
     /**
-     * Set the paginate results for testing paginate() method
-     * 
+     * Set the paginate results for testing paginate() method.
+     *
      * @param array $results Array of entity data
      * @param int $total Total number of records
      * @param int $perPage Records per page

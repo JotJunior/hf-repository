@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
@@ -11,6 +18,9 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(ValidatableTrait::class)]
 class ValidatableTraitTest extends TestCase
 {
@@ -29,10 +39,10 @@ class ValidatableTraitTest extends TestCase
     {
         // Arrange
         $validator = $this->createMock(ValidatorInterface::class);
-        
+
         // Act
         $this->sut->addValidator('name', $validator);
-        
+
         // Assert
         $this->assertTrue($this->sut->hasValidator('name'));
     }
@@ -47,12 +57,12 @@ class ValidatableTraitTest extends TestCase
             ->method('validate')
             ->with($this->sut->name)
             ->willReturn(true);
-            
+
         $this->sut->addValidator('name', $validator);
-        
+
         // Act
         $result = $this->sut->validate();
-        
+
         // Assert
         $this->assertTrue($result);
         $this->assertEmpty($this->sut->getErrors());
@@ -64,7 +74,7 @@ class ValidatableTraitTest extends TestCase
     {
         // Arrange
         $errors = ['Name is required'];
-        
+
         $validator = $this->createMock(ValidatorInterface::class);
         $validator->expects($this->once())
             ->method('validate')
@@ -73,12 +83,12 @@ class ValidatableTraitTest extends TestCase
         $validator->expects($this->once())
             ->method('consumeErrors')
             ->willReturn($errors);
-            
+
         $this->sut->addValidator('name', $validator);
-        
+
         // Act
         $result = $this->sut->validate();
-        
+
         // Assert
         $this->assertFalse($result);
         $this->assertEquals(['name' => $errors], $this->sut->getErrors());
@@ -90,41 +100,42 @@ class ValidatableTraitTest extends TestCase
     {
         // Arrange
         $errors = ['Name is required'];
-        
+
         $validator = $this->createMock(ValidatorInterface::class);
         $validator->method('validate')
             ->willReturn(false);
         $validator->method('consumeErrors')
             ->willReturn($errors);
-            
+
         $this->sut->addValidator('name', $validator);
         $this->sut->validate();
-        
+
         // Act
         $result = $this->sut->getErrors();
-        
+
         // Assert
         $this->assertEquals(['name' => $errors], $result);
     }
 }
 
 /**
- * Test class that uses ValidatableTrait
+ * Test class that uses ValidatableTrait.
  */
 class ValidatableTraitTestClass
 {
     use ValidatableTrait;
-    
+
     public string $name;
+
     public string $email;
-    
+
     public function getEntityState(): string
     {
         return 'create';
     }
-    
+
     public function hasValidator(string $property): bool
     {
-        return isset($this->validators[$property]) && !empty($this->validators[$property]);
+        return isset($this->validators[$property]) && ! empty($this->validators[$property]);
     }
 }

@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Entity\Traits;
 
@@ -10,7 +17,7 @@ namespace Jot\HfRepository\Entity\Traits;
 trait PropertyVisibilityTrait
 {
     /**
-     * List of properties that should be hidden from array representation
+     * List of properties that should be hidden from array representation.
      */
     protected array $hiddenProperties = [
         '@timestamp',
@@ -28,17 +35,17 @@ trait PropertyVisibilityTrait
     /**
      * Hides the specified property or properties by adding them to a list of hidden properties.
      *
-     * @param string|array $property The property name or an array of property names to hide.
-     * @return self The current instance for method chaining.
+     * @param array|string $property the property name or an array of property names to hide
+     * @return self the current instance for method chaining
      */
-    public function hide(string|array $property): self
+    public function hide(array|string $property): self
     {
         if (is_array($property)) {
             $this->hiddenProperties = [
                 ...$property,
                 ...$this->hiddenProperties,
             ];
-        } else if (is_string($property)) {
+        } elseif (is_string($property)) {
             $this->hiddenProperties[] = $property;
         }
 
@@ -48,8 +55,8 @@ trait PropertyVisibilityTrait
     /**
      * Checks if a property should be hidden.
      *
-     * @param string $property The property name to check.
-     * @return bool True if the property should be hidden, false otherwise.
+     * @param string $property the property name to check
+     * @return bool true if the property should be hidden, false otherwise
      */
     protected function isHidden(string $property): bool
     {

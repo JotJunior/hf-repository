@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository;
 
@@ -21,7 +28,9 @@ use Jot\HfRepository\Entity\Traits\PropertyVisibilityTrait;
 use Jot\HfRepository\Entity\Traits\ValidatableTrait;
 use Jot\HfRepository\Entity\ValidatableInterface;
 use Jot\HfRepository\Exception\InvalidEntityException;
+use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 
 /**
  * Base entity class optimized for Swoole/Hyperf environment.
@@ -29,7 +38,7 @@ use Psr\Container\ContainerInterface;
  * - Coroutine safety through Context isolation
  * - Proper dependency injection
  * - Serializable entities for coroutine scheduling
- * - No static property issues
+ * - No static property issues.
  */
 abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInterface, HashableInterface, PropertyVisibilityInterface, StateAwareInterface, ValidatableInterface
 {
@@ -41,50 +50,88 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     use ValidatableTrait;
 
     /**
-     * Context key for entity factory
+     * Context key for entity factory.
      */
     private const CONTEXT_ENTITY_FACTORY = 'entity.factory.';
+
     /**
      * @Inject
-     * @var ContainerInterface
      */
     protected ContainerInterface $container;
+
     /**
-     * Entity factory instance (stored in Context for coroutine safety)
+     * Entity factory instance (stored in Context for coroutine safety).
      */
     protected ?string $entityFactoryClass = EntityFactory::class;
 
     /**
-     * Constructor with dependency injection support
+     * Constructor with dependency injection support.
      */
     public function __construct(array $data = [])
     {
         // Hydrate the entity with provided data
-        if (!empty($data)) {
+        if (! empty($data)) {
             $this->hydrate($data);
         }
     }
 
     /**
      * Retrieves the value of an inaccessible or non-public property.
-     * @param string $name The name of the property to retrieve.
-     * @return mixed The value of the requested property.
-     * @throws InvalidEntityException If the property does not exist in the object.
+     * @param string $name the name of the property to retrieve
+     * @return mixed the value of the requested property
+     * @throws InvalidEntityException if the property does not exist in the object
      */
     public function __get(string $name): mixed
     {
-        if (!property_exists($this, $name)) {
+        if (! property_exists($this, $name)) {
             throw new InvalidEntityException();
         }
-        return $this->$name;
+        return $this->{$name};
+    }
+
+    /**
+     * Magic method to handle serialization for coroutine scheduling.
+     * Ensures that non-serializable properties are properly handled.
+     */
+    public function __sleep(): array
+    {
+        $properties = get_object_vars($this);
+
+        // Remove container and other non-serializable properties
+        unset($properties['container']);
+
+        return array_keys($properties);
+    }
+
+    /**
+     * Magic method to handle unserialization after coroutine scheduling.
+     * Restores container and other dependencies.
+     */
+    public function __wakeup(): void
+    {
+        // Container will be re-injected by Hyperf's dependency injection
+    }
+
+    /**
+     * Creates a deep clone of the entity, ensuring all nested objects are cloned.
+     * Important for coroutine safety to prevent shared references.
+     */
+    public function __clone()
+    {
+        // Deep clone any object properties to prevent shared references
+        foreach (get_object_vars($this) as $key => $value) {
+            if (is_object($value)) {
+                $this->{$key} = clone $value;
+            }
+        }
     }
 
     /**
      * Gets the entity factory used to create related entities.
      * Uses Hyperf Context to ensure coroutine safety.
      * @return EntityFactoryInterface The entity factory instance
-     * @throws \Psr\Container\ContainerExceptionInterface
-     * @throws \Psr\Container\NotFoundExceptionInterface
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function getEntityFactory(): EntityFactoryInterface
     {
@@ -115,7 +162,6 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
      * Updates the Hyperf Context to ensure coroutine safety.
      *
      * @param EntityFactoryInterface $entityFactory The entity factory instance
-     * @return self
      */
     public function setEntityFactory(EntityFactoryInterface $entityFactory): self
     {
@@ -123,44 +169,5 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
         Context::set($contextKey, $entityFactory);
 
         return $this;
-    }
-
-    /**
-     * Magic method to handle serialization for coroutine scheduling.
-     * Ensures that non-serializable properties are properly handled.
-     *
-     * @return array
-     */
-    public function __sleep(): array
-    {
-        $properties = get_object_vars($this);
-
-        // Remove container and other non-serializable properties
-        unset($properties['container']);
-
-        return array_keys($properties);
-    }
-
-    /**
-     * Magic method to handle unserialization after coroutine scheduling.
-     * Restores container and other dependencies.
-     */
-    public function __wakeup(): void
-    {
-        // Container will be re-injected by Hyperf's dependency injection
-    }
-
-    /**
-     * Creates a deep clone of the entity, ensuring all nested objects are cloned.
-     * Important for coroutine safety to prevent shared references.
-     */
-    public function __clone()
-    {
-        // Deep clone any object properties to prevent shared references
-        foreach (get_object_vars($this) as $key => $value) {
-            if (is_object($value)) {
-                $this->$key = clone $value;
-            }
-        }
     }
 }

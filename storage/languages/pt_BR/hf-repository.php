@@ -1,7 +1,13 @@
 <?php
 
 declare(strict_types=1);
-
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 return [
     // Exception messages
     'invalid_entity' => 'Entidade inválida',
@@ -36,6 +42,6 @@ return [
         'controller_description' => 'Cria uma classe de controlador baseada em repositório a partir de um índice elasticsearch.',
         'crud_description' => 'Cria um controlador CRUD completo para um determinado índice Elasticsearch.',
         'entity_description' => 'Cria classes de entidade baseadas na configuração de mapeamento do elasticsearch.',
-        'repository_description' => 'Cria uma classe de repositório.'
-    ]
+        'repository_description' => 'Cria uma classe de repositório.',
+    ],
 ];

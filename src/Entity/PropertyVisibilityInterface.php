@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Entity;
 
@@ -12,8 +19,8 @@ interface PropertyVisibilityInterface
     /**
      * Hides the specified property or properties by adding them to a list of hidden properties.
      *
-     * @param string|array $property The property name or an array of property names to hide.
-     * @return self The current instance for method chaining.
+     * @param array|string $property the property name or an array of property names to hide
+     * @return self the current instance for method chaining
      */
-    public function hide(string|array $property): self;
+    public function hide(array|string $property): self;
 }

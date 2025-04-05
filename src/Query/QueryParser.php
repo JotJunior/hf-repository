@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Query;
 
@@ -30,8 +37,8 @@ class QueryParser implements QueryParserInterface
         $queryBuilder->select(explode(',', $params['_fields'] ?? '*'));
 
         // Apply sorting
-        if (!empty($params['_sort'])) {
-            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
+        if (! empty($params['_sort'])) {
+            $sortList = array_map(fn ($item) => explode(':', $item), explode(',', $params['_sort']));
             foreach ($sortList as $sort) {
                 $queryBuilder->orderBy($sort[0], $sort[1] ?? 'asc');
             }

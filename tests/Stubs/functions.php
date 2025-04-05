@@ -1,15 +1,22 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Stubs;
 
 /**
- * Mock for the global __ function used for translations
+ * Mock for the global __ function used for translations.
  *
  * @param string $key The translation key
  * @param array $replace The replacement parameters
- * @param string|null $locale The locale
+ * @param null|string $locale The locale
  * @return string The translated string
  */
 function __($key, array $replace = [], ?string $locale = null): string
@@ -23,17 +30,17 @@ function __($key, array $replace = [], ?string $locale = null): string
         'hf-repository.failed_create_entity' => 'Failed to create entity',
         'hf-repository.failed_create_entity_instance' => 'Failed to create entity instance',
         'hf-repository.failed_update_entity' => 'Failed to update entity',
-        'hf-repository.too_many_requests' => 'Too many requests'
+        'hf-repository.too_many_requests' => 'Too many requests',
     ];
-    
+
     $translation = $translations[$key] ?? $key;
-    
+
     // Replace placeholders with values
-    if (!empty($replace) && is_string($translation)) {
+    if (! empty($replace) && is_string($translation)) {
         foreach ($replace as $index => $value) {
-            $translation = str_replace('{'.$index.'}', $value, $translation);
+            $translation = str_replace('{' . $index . '}', $value, $translation);
         }
     }
-    
+
     return $translation;
 }

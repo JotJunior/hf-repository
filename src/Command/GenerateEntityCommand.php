@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Command;
 
@@ -10,7 +17,6 @@ use Symfony\Component\Console\Input\InputOption;
 #[Command]
 class GenerateEntityCommand extends AbstractCommand
 {
-
     protected string $command = 'repo:entity';
 
     public function configure(): void
@@ -22,10 +28,8 @@ class GenerateEntityCommand extends AbstractCommand
         $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Rewrite mapping file');
     }
 
-
     public function handle()
     {
-
         $indexName = $this->getIndexName();
 
         $this->force = boolval($this->input->getOption('force'));
@@ -33,5 +37,4 @@ class GenerateEntityCommand extends AbstractCommand
 
         $this->createEntities($indexName);
     }
-
 }

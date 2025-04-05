@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
@@ -10,6 +17,9 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(EntityIdentifierTrait::class)]
 class EntityIdentifierTraitTest extends TestCase
 {
@@ -66,7 +76,7 @@ class EntityIdentifierTraitTest extends TestCase
 }
 
 /**
- * Test class that uses EntityIdentifierTrait
+ * Test class that uses EntityIdentifierTrait.
  */
 class EntityIdentifierTraitTestClass
 {

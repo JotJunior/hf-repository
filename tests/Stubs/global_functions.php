@@ -1,16 +1,14 @@
 <?php
 
 declare(strict_types=1);
-
 /**
- * Mock for the global __ function used for translations
+ * This file is part of hf-repository
  *
- * @param string $key The translation key
- * @param array $replace The replacement parameters
- * @param string|null $locale The locale
- * @return string The translated string
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
  */
-if (!function_exists('__')) {
+if (! function_exists('__')) {
     function __($key, array $replace = [], ?string $locale = null): string
     {
         // Simple translation mapping for testing
@@ -22,18 +20,18 @@ if (!function_exists('__')) {
             'hf-repository.failed_create_entity' => 'Failed to create entity',
             'hf-repository.failed_create_entity_instance' => 'Failed to create entity instance',
             'hf-repository.failed_update_entity' => 'Failed to update entity',
-            'hf-repository.too_many_requests' => 'Too many requests'
+            'hf-repository.too_many_requests' => 'Too many requests',
         ];
-        
+
         $translation = $translations[$key] ?? $key;
-        
+
         // Replace placeholders with values
-        if (!empty($replace) && is_string($translation)) {
+        if (! empty($replace) && is_string($translation)) {
             foreach ($replace as $index => $value) {
-                $translation = str_replace('{'.$index.'}', $value, $translation);
+                $translation = str_replace('{' . $index . '}', $value, $translation);
             }
         }
-        
+
         return $translation;
     }
 }

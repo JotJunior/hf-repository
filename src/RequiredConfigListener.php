@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository;
 
@@ -14,7 +21,6 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 #[Listener]
 class RequiredConfigListener implements ListenerInterface
 {
-
     private const REQUIRED_PACKAGES = [
         'hyperf/etcd',
         'hyperf/redis',
@@ -25,13 +31,12 @@ class RequiredConfigListener implements ListenerInterface
 
     public function __construct(protected ContainerInterface $container)
     {
-
     }
 
     public function listen(): array
     {
         return [
-            Event\BeforeServerStart::class
+            Event\BeforeServerStart::class,
         ];
     }
 
@@ -55,8 +60,8 @@ class RequiredConfigListener implements ListenerInterface
         $configService = $this->container->get(ConfigInterface::class);
         $configName = str_replace('-', '_', explode('/', $package)[1]);
 
-        if (!$configService->get($configName)) {
-            if (!$hasMissingRequiredPackages) {
+        if (! $configService->get($configName)) {
+            if (! $hasMissingRequiredPackages) {
                 $output->writeln('');
                 $output->writeln(sprintf(
                     '<options=bold;fg=red>[ERROR]</> The required packages <options=bold>%s</> are not configured. To proceed, please run the following commands before starting the application:',

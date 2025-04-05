@@ -1,5 +1,14 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository;
 
 use Hyperf\Context\Context;
@@ -13,6 +22,8 @@ use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
+use ReflectionException;
+use function Hyperf\Translation\__;
 
 /**
  * Abstract Repository class implementing the Repository pattern.
@@ -26,32 +37,36 @@ use Jot\HfRepository\Query\QueryParserInterface;
  * - Uses Context isolation for concurrent requests
  * - Implements proper dependency injection
  * - Avoids static properties for coroutine safety
- * - Handles serialization for coroutine scheduling
+ * - Handles serialization for coroutine scheduling.
  */
 abstract class Repository implements RepositoryInterface
 {
     /**
-     * Context key prefix for repository instances
+     * Context key prefix for repository instances.
      */
     private const CONTEXT_REPOSITORY = 'repository.instance.';
+
     /**
      * @Inject
-     * @var ContainerInterface
      */
     protected ContainerInterface $container;
+
     /**
-     * Entity class name to be instantiated by this repository
+     * Entity class name to be instantiated by this repository.
      */
     protected string $entity;
+
     /**
-     * Index name for storage operations
+     * Index name for storage operations.
      */
     protected string $index;
 
     #[Inject]
     protected QueryBuilderInterface $queryBuilder;
+
     #[Inject]
     protected QueryParserInterface $queryParser;
+
     #[Inject]
     protected EntityFactoryInterface $entityFactory;
 
@@ -62,7 +77,7 @@ abstract class Repository implements RepositoryInterface
 
     /**
      * Retrieves the index name derived from the class name.
-     * @return string The index name in snake_case format.
+     * @return string the index name in snake_case format
      */
     protected function getIndexName(): string
     {
@@ -72,11 +87,48 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
+     * Magic method to handle serialization for coroutine scheduling.
+     * Ensures that non-serializable properties are properly handled.
+     */
+    public function __sleep(): array
+    {
+        $properties = get_object_vars($this);
+
+        // Remove container and other non-serializable properties
+        unset($properties['container']);
+
+        return array_keys($properties);
+    }
+
+    /**
+     * Magic method to handle unserialization after coroutine scheduling.
+     * Restores container and other dependencies.
+     */
+    public function __wakeup(): void
+    {
+        // Container will be re-injected by Hyperf's dependency injection
+    }
+
+    /**
+     * Creates a deep clone of the repository, ensuring all nested objects are cloned.
+     * Important for coroutine safety to prevent shared references.
+     */
+    public function __clone()
+    {
+        // Deep clone any object properties to prevent shared references
+        foreach (get_object_vars($this) as $key => $value) {
+            if (is_object($value)) {
+                $this->{$key} = clone $value;
+            }
+        }
+    }
+
+    /**
      * Finds and retrieves an entity by its ID.
      * Uses Context to store query results for the current coroutine.
      *
-     * @param string $id The unique identifier of the entity.
-     * @return null|EntityInterface The hydrated entity if found, or null if not found.
+     * @param string $id the unique identifier of the entity
+     * @return null|EntityInterface the hydrated entity if found, or null if not found
      */
     public function find(string $id): ?EntityInterface
     {
@@ -111,11 +163,11 @@ abstract class Repository implements RepositoryInterface
     /**
      * Creates a new entity in the repository after validating the provided entity's data.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param EntityInterface $entity The entity instance to be created, which must pass validation.
-     * @return EntityInterface The newly created entity instance populated with the resulting data.
+     * @param EntityInterface $entity the entity instance to be created, which must pass validation
+     * @return EntityInterface the newly created entity instance populated with the resulting data
      * @throws EntityValidationWithErrorsException
      * @throws RepositoryCreateException
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function create(EntityInterface $entity): EntityInterface
     {
@@ -148,8 +200,8 @@ abstract class Repository implements RepositoryInterface
 
     /**
      * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity The entity to validate.
-     * @throws EntityValidationWithErrorsException If validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
      */
     protected function validateEntity(EntityInterface $entity): void
     {
@@ -161,9 +213,9 @@ abstract class Repository implements RepositoryInterface
     /**
      * Retrieves and hydrates the first entity matching the provided parameters.
      * Uses Context to store query results for the current coroutine.
-     * @param array $params An associative array of query parameters used to filter the entities.
-     * @return null|EntityInterface The hydrated entity instance corresponding to the first match.
-     * @throws \ReflectionException
+     * @param array $params an associative array of query parameters used to filter the entities
+     * @return null|EntityInterface the hydrated entity instance corresponding to the first match
+     * @throws ReflectionException
      */
     public function first(array $params): ?EntityInterface
     {
@@ -203,9 +255,9 @@ abstract class Repository implements RepositoryInterface
      * Executes a search query based on the provided parameters and maps the results
      * to instances of the specified entity.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param array $params An associative array containing the parameters for the search query.
-     * @return array An array of entity instances resulting from the query execution.
-     * @throws \ReflectionException
+     * @param array $params an associative array containing the parameters for the search query
+     * @return array an array of entity instances resulting from the query execution
+     * @throws ReflectionException
      */
     public function search(array $params): array
     {
@@ -251,18 +303,18 @@ abstract class Repository implements RepositoryInterface
     /**
      * Paginates a dataset based on the provided parameters.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param array $params The parameters used to filter or query the dataset.
-     * @param int $page The current page number (default is 1).
-     * @param int $perPage The number of items to display per page (default is 10).
-     * @return array An array containing the paginated results, current page, items per page, and total count.
-     * @throws \ReflectionException
+     * @param array $params the parameters used to filter or query the dataset
+     * @param int $page the current page number (default is 1)
+     * @param int $perPage the number of items to display per page (default is 10)
+     * @return array an array containing the paginated results, current page, items per page, and total count
+     * @throws ReflectionException
      */
     public function paginate(array $params, int $page = 1, int $perPage = 10): array
     {
         // Create a unique context key based on the parameters and pagination info
         $paginationInfo = ['page' => $page, 'perPage' => $perPage];
-        $contextKey = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.' .
-            md5(serialize($params) . serialize($paginationInfo));
+        $contextKey = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.'
+            . md5(serialize($params) . serialize($paginationInfo));
 
         // Check if we already have this result in the current coroutine context
         $cachedResults = Context::get($contextKey);
@@ -303,7 +355,7 @@ abstract class Repository implements RepositoryInterface
             ...$result,
             'current_page' => (int)$page,
             'per_page' => (int)$perPage,
-            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count()
+            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
         ];
 
         // Store in context for this coroutine
@@ -315,12 +367,12 @@ abstract class Repository implements RepositoryInterface
     /**
      * Updates an existing entity in the repository and returns the updated entity.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param EntityInterface $entity The entity to update, containing its identifier and updated data.
-     * @return EntityInterface The updated entity after successful modification.
-     * @throws EntityValidationWithErrorsException If the provided entity fails validation.
-     * @throws RepositoryUpdateException If the update operation fails or encounters an error.
+     * @param EntityInterface $entity the entity to update, containing its identifier and updated data
+     * @return EntityInterface the updated entity after successful modification
+     * @throws EntityValidationWithErrorsException if the provided entity fails validation
+     * @throws RepositoryUpdateException if the update operation fails or encounters an error
      * @throws EntityValidationWithErrorsException
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function update(EntityInterface $entity): EntityInterface
     {
@@ -368,9 +420,9 @@ abstract class Repository implements RepositoryInterface
         $firstPrefix = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.';
 
         foreach ($contextKeys as $key => $value) {
-            if (str_starts_with($key, $searchPrefix) ||
-                str_starts_with($key, $paginatePrefix) ||
-                str_starts_with($key, $firstPrefix)) {
+            if (str_starts_with($key, $searchPrefix)
+                || str_starts_with($key, $paginatePrefix)
+                || str_starts_with($key, $firstPrefix)) {
                 Context::set($key, null);
             }
         }
@@ -379,8 +431,8 @@ abstract class Repository implements RepositoryInterface
     /**
      * Deletes a record identified by the given ID from the index.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param string $id The unique identifier of the record to be deleted.
-     * @return bool True if the record was successfully deleted, false otherwise.
+     * @param string $id the unique identifier of the record to be deleted
+     * @return bool true if the record was successfully deleted, false otherwise
      */
     public function delete(string $id): bool
     {
@@ -402,76 +454,13 @@ abstract class Repository implements RepositoryInterface
     /**
      * Checks if a record with the specified identifier exists in the database.
      * Optimized for Swoole/Hyperf with coroutine safety.
-     * @param string $id The unique identifier of the record to check for existence.
-     * @return bool True if the record exists, false otherwise.
+     * @param string $id the unique identifier of the record to check for existence
+     * @return bool true if the record exists, false otherwise
      */
     public function exists(string $id): bool
     {
-        // Check if the entity is already in context
-        $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $id;
-        $entity = Context::get($contextKey);
-
-        if ($entity !== null) {
-            // If we have the entity in context, it exists
-            return true;
-        }
-
-        // Create a unique context key for this exists check
-        $existsKey = self::CONTEXT_REPOSITORY . 'exists.' . $this->index . '.' . $id;
-        $exists = Context::get($existsKey);
-
-        if ($exists !== null) {
-            return $exists;
-        }
-
-        $result = $this->queryBuilder
-                ->select()
-                ->from($this->index)
-                ->where('id', $id)
-                ->count() > 0;
-
-        // Store in context for this coroutine
-        Context::set($existsKey, $result);
-
-        return $result;
-    }
-
-    /**
-     * Magic method to handle serialization for coroutine scheduling.
-     * Ensures that non-serializable properties are properly handled.
-     *
-     * @return array
-     */
-    public function __sleep(): array
-    {
-        $properties = get_object_vars($this);
-
-        // Remove container and other non-serializable properties
-        unset($properties['container']);
-
-        return array_keys($properties);
-    }
-
-    /**
-     * Magic method to handle unserialization after coroutine scheduling.
-     * Restores container and other dependencies.
-     */
-    public function __wakeup(): void
-    {
-        // Container will be re-injected by Hyperf's dependency injection
-    }
-
-    /**
-     * Creates a deep clone of the repository, ensuring all nested objects are cloned.
-     * Important for coroutine safety to prevent shared references.
-     */
-    public function __clone()
-    {
-        // Deep clone any object properties to prevent shared references
-        foreach (get_object_vars($this) as $key => $value) {
-            if (is_object($value)) {
-                $this->$key = clone $value;
-            }
-        }
+        return $this->queryBuilder
+            ->from($this->index)
+            ->exists($id);
     }
 }

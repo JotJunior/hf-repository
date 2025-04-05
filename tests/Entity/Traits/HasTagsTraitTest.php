@@ -1,5 +1,14 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
 use Jot\HfRepository\Entity\Traits\HasTagsTrait;
@@ -8,10 +17,19 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(HasTagsTrait::class)]
 class HasTagsTraitTest extends TestCase
 {
     private HasTagsTraitTestClass $sut;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->sut = new HasTagsTraitTestClass();
+    }
 
     #[Test]
     #[Group('unit')]
@@ -19,7 +37,7 @@ class HasTagsTraitTest extends TestCase
     {
         // Act
         $result = $this->sut->getTags();
-        
+
         // Assert
         $this->assertNull($result);
     }
@@ -30,16 +48,16 @@ class HasTagsTraitTest extends TestCase
     {
         // Arrange
         $tag = 'test-tag';
-        
+
         // Act
         $this->sut->addTag($tag);
-        
+
         // Assert
         $this->assertIsArray($this->sut->getTags());
         $this->assertCount(1, $this->sut->getTags());
         $this->assertContains($tag, $this->sut->getTags());
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testAddTagWithExistingTags(): void
@@ -47,27 +65,21 @@ class HasTagsTraitTest extends TestCase
         // Arrange
         $firstTag = 'first-tag';
         $secondTag = 'second-tag';
-        
+
         // Act
         $this->sut->addTag($firstTag);
         $this->sut->addTag($secondTag);
-        
+
         // Assert
         $this->assertIsArray($this->sut->getTags());
         $this->assertCount(2, $this->sut->getTags());
         $this->assertContains($firstTag, $this->sut->getTags());
         $this->assertContains($secondTag, $this->sut->getTags());
     }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->sut = new HasTagsTraitTestClass();
-    }
 }
 
 /**
- * Test class for HasTagsTrait
+ * Test class for HasTagsTrait.
  */
 class HasTagsTraitTestClass
 {

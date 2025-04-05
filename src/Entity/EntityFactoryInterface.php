@@ -1,12 +1,19 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Entity;
 
 /**
  * Interface for entity factory functionality.
- * 
+ *
  * This interface defines the contract for classes that create entity instances.
  * It follows the Interface Segregation Principle by providing a focused interface
  * for entity creation.
@@ -21,5 +28,4 @@ interface EntityFactoryInterface
      * @return mixed The created entity instance
      */
     public function create(string $entityClass, array $data);
-
 }

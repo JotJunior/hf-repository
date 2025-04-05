@@ -1,17 +1,24 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Command;
 
 use Hyperf\Command\Annotation\Command;
 use Symfony\Component\Console\Input\InputOption;
+
 use function Hyperf\Translation\__;
 
 #[Command]
 class GenerateControllerCommand extends AbstractCommand
 {
-
     protected string $command = 'repo:controller';
 
     public function configure(): void
@@ -26,7 +33,6 @@ class GenerateControllerCommand extends AbstractCommand
 
     public function handle()
     {
-
         $indexName = $this->getIndexName();
 
         $apiVersion = $this->input->getOption('api-version');
@@ -34,5 +40,4 @@ class GenerateControllerCommand extends AbstractCommand
 
         $this->createController($indexName, $apiVersion);
     }
-
 }

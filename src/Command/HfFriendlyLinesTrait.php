@@ -1,10 +1,21 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository\Command;
+
+use DateTimeImmutable;
+use Exception;
 
 trait HfFriendlyLinesTrait
 {
-
     public const MESSAGE_TYPES = [
         'success' => '✅',
         'error' => '🚫',
@@ -55,7 +66,7 @@ trait HfFriendlyLinesTrait
         $pattern = '/%(?:\d+\$)?[+-]?(?:\d+|\*)?(?:\.(?:\d+|\*))?[bcdeEfFgGosuxX]/';
         preg_match_all($pattern, $message, $matches);
         if (count($replacements) !== count($matches[0])) {
-            throw new \Exception('Incorrect count of variables in the message string');
+            throw new Exception('Incorrect count of variables in the message string');
         }
     }
 
@@ -68,8 +79,7 @@ trait HfFriendlyLinesTrait
             default => 'white'
         };
         $emoji = self::MESSAGE_TYPES[$type] ?? '';
-        $dateTime = new \DateTimeImmutable('now');
-        return sprintf('<fg=%s>%s</> %s : %s', $color, $dateTime->format('Y-m-d\\TH:i:s.u'), $emoji, $message);
+        $dateTime = new DateTimeImmutable('now');
+        return sprintf('<fg=%s>%s</> %s : %s', $color, $dateTime->format('Y-m-d\TH:i:s.u'), $emoji, $message);
     }
-
 }

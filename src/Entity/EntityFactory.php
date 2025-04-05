@@ -1,8 +1,18 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Entity;
+
+use ReflectionClass;
+use ReflectionException;
 
 use function Hyperf\Support\make;
 
@@ -18,12 +28,12 @@ class EntityFactory implements EntityFactoryInterface
      * @param string $entityClass The fully qualified class name of the entity to create
      * @param array $data The data to initialize the entity with
      * @return mixed The created entity instance
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function create(string $entityClass, array $data)
     {
         // Check if the entity constructor expects an array
-        $reflection = new \ReflectionClass($entityClass);
+        $reflection = new ReflectionClass($entityClass);
         $constructor = $reflection->getConstructor();
 
         if ($constructor) {
@@ -31,34 +41,32 @@ class EntityFactory implements EntityFactoryInterface
             if (count($params) === 1 && $params[0]->getType() && $params[0]->getType()->getName() === 'array') {
                 // Constructor expects a single array parameter
                 return make($entityClass, ['data' => $data]);
-            } else {
-                // Constructor expects individual parameters
-                // Map data array keys to constructor parameter names
-                $constructorArgs = [];
-                foreach ($params as $param) {
-                    $paramName = $param->getName();
-                    if (array_key_exists($paramName, $data)) {
-                        $constructorArgs[$paramName] = $data[$paramName];
-                    }
-                }
-                return make($entityClass, $constructorArgs);
             }
+            // Constructor expects individual parameters
+            // Map data array keys to constructor parameter names
+            $constructorArgs = [];
+            foreach ($params as $param) {
+                $paramName = $param->getName();
+                if (array_key_exists($paramName, $data)) {
+                    $constructorArgs[$paramName] = $data[$paramName];
+                }
+            }
+            return make($entityClass, $constructorArgs);
         }
 
         // Fallback to creating without constructor arguments
         $instance = $reflection->newInstance();
-        
+
         // Set public properties directly
         foreach ($data as $key => $value) {
             if ($reflection->hasProperty($key)) {
                 $property = $reflection->getProperty($key);
                 if ($property->isPublic()) {
-                    $instance->$key = $value;
+                    $instance->{$key} = $value;
                 }
             }
         }
-        
+
         return $instance;
     }
-
 }

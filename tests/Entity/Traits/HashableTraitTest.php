@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
@@ -10,6 +17,9 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(HashableTrait::class)]
 class HashableTraitTest extends TestCase
 {
@@ -67,14 +77,14 @@ class HashableTraitTest extends TestCase
         $salt1 = 'salt1';
         $salt2 = 'salt2';
         $encryptionKey = 'test-encryption-key';
-        
+
         // Create a copy of the original object
         $sut2 = clone $this->sut;
 
         // Act
         $this->sut->createHash($property, $salt1, $encryptionKey);
         $hash1 = $this->sut->password;
-        
+
         $sut2->createHash($property, $salt2, $encryptionKey);
         $hash2 = $sut2->password;
 
@@ -91,14 +101,14 @@ class HashableTraitTest extends TestCase
         $salt = 'test-salt';
         $encryptionKey1 = 'encryption-key-1';
         $encryptionKey2 = 'encryption-key-2';
-        
+
         // Create a copy of the original object
         $sut2 = clone $this->sut;
 
         // Act
         $this->sut->createHash($property, $salt, $encryptionKey1);
         $hash1 = $this->sut->password;
-        
+
         $sut2->createHash($property, $salt, $encryptionKey2);
         $hash2 = $sut2->password;
 
@@ -108,11 +118,11 @@ class HashableTraitTest extends TestCase
 }
 
 /**
- * Test class that uses HashableTrait
+ * Test class that uses HashableTrait.
  */
 class HashableTraitTestClass
 {
     use HashableTrait;
-    
+
     public string $password;
 }

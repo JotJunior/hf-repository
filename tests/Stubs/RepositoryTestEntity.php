@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Stubs;
 
@@ -13,126 +20,91 @@ use Jot\HfRepository\Entity\Traits\HydratableTrait;
 class RepositoryTestEntity implements EntityInterface
 {
     use HydratableTrait;
-    
-    /**
-     * @var string
-     */
+
     private string $id;
-    
-    /**
-     * @var string
-     */
+
     private string $name;
-    
-    /**
-     * @var array
-     */
+
     private array $errors = [];
-    
-    /**
-     * @var bool
-     */
+
     private bool $isValid = true;
-    
+
     /**
-     * Get the entity ID
-     * 
-     * @return string
+     * Magic method to get entity properties.
+     */
+    public function __get(string $name): mixed
+    {
+        return $this->{$name} ?? null;
+    }
+
+    /**
+     * Get the entity ID.
      */
     public function getId(): string
     {
         return $this->id;
     }
-    
+
     /**
-     * Set the entity ID
-     * 
-     * @param string $id
-     * @return self
+     * Set the entity ID.
      */
     public function setId(string $id): self
     {
         $this->id = $id;
         return $this;
     }
-    
+
     /**
-     * Get the entity name
-     * 
-     * @return string
+     * Get the entity name.
      */
     public function getName(): string
     {
         return $this->name;
     }
-    
+
     /**
-     * Set the entity name
-     * 
-     * @param string $name
-     * @return self
+     * Set the entity name.
      */
     public function setName(string $name): self
     {
         $this->name = $name;
         return $this;
     }
-    
+
     /**
-     * Convert entity to array
-     * 
-     * @return array
+     * Convert entity to array.
      */
     public function toArray(): array
     {
         return [
             'id' => $this->id ?? '',
-            'name' => $this->name ?? ''
+            'name' => $this->name ?? '',
         ];
     }
-    
+
     /**
-     * Validate the entity
-     * 
-     * @return bool
+     * Validate the entity.
      */
     public function validate(): bool
     {
         return $this->isValid;
     }
-    
+
     /**
-     * Get validation errors
-     * 
-     * @return array
+     * Get validation errors.
      */
     public function getErrors(): array
     {
         return $this->errors;
     }
-    
+
     /**
-     * Set validation status for testing
-     * 
-     * @param bool $isValid
-     * @param array $errors
-     * @return self
+     * Set validation status for testing.
      */
     public function setValidationStatus(bool $isValid, array $errors = []): self
     {
         $this->isValid = $isValid;
         $this->errors = $errors;
         return $this;
-    }
-    
-    /**
-     * Magic method to get entity properties
-     * 
-     * @param string $name
-     * @return mixed
-     */
-    public function __get(string $name): mixed
-    {
-        return $this->$name ?? null;
     }
 }

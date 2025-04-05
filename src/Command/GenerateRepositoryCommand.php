@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Command;
 
@@ -10,7 +17,6 @@ use Symfony\Component\Console\Input\InputOption;
 #[Command]
 class GenerateRepositoryCommand extends AbstractCommand
 {
-
     protected string $command = 'repo:repository';
 
     public function configure(): void
@@ -24,12 +30,10 @@ class GenerateRepositoryCommand extends AbstractCommand
 
     public function handle()
     {
-
         $indexName = $this->getIndexName();
 
         $this->force = boolval($this->input->getOption('force'));
 
         $this->createRepository($indexName);
     }
-
 }

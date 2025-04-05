@@ -1,5 +1,14 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
 use Jot\HfRepository\Entity\Traits\PropertyVisibilityTrait;
@@ -8,10 +17,19 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @internal
+ */
 #[CoversClass(PropertyVisibilityTrait::class)]
 class PropertyVisibilityTraitTest extends TestCase
 {
     private PropertyVisibilityTraitTestClass $sut;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->sut = new PropertyVisibilityTraitTestClass();
+    }
 
     #[Test]
     #[Group('unit')]
@@ -35,32 +53,32 @@ class PropertyVisibilityTraitTest extends TestCase
     {
         // Arrange
         $property = 'test_property';
-        
+
         // Act
         $result = $this->sut->hide($property);
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertContains($property, $this->sut->getHiddenProperties());
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testHideWithArrayOfProperties(): void
     {
         // Arrange
         $properties = ['property1', 'property2', 'property3'];
-        
+
         // Act
         $result = $this->sut->hide($properties);
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         foreach ($properties as $property) {
             $this->assertContains($property, $this->sut->getHiddenProperties());
         }
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testIsHiddenWithHiddenProperty(): void
@@ -68,47 +86,41 @@ class PropertyVisibilityTraitTest extends TestCase
         // Arrange
         $property = 'hidden_test_property';
         $this->sut->hide($property);
-        
+
         // Act
         $result = $this->sut->isPropertyHidden($property);
-        
+
         // Assert
         $this->assertTrue($result);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testIsHiddenWithVisibleProperty(): void
     {
         // Arrange
         $property = 'visible_test_property';
-        
+
         // Act
         $result = $this->sut->isPropertyHidden($property);
-        
+
         // Assert
         $this->assertFalse($result);
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->sut = new PropertyVisibilityTraitTestClass();
     }
 }
 
 /**
- * Test class for PropertyVisibilityTrait
+ * Test class for PropertyVisibilityTrait.
  */
 class PropertyVisibilityTraitTestClass
 {
     use PropertyVisibilityTrait;
-    
+
     public function getHiddenProperties(): array
     {
         return $this->hiddenProperties;
     }
-    
+
     public function isPropertyHidden(string $property): bool
     {
         return $this->isHidden($property);

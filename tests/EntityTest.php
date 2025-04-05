@@ -1,22 +1,32 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests;
 
-use Hyperf\Stringable\Str;
+use DateTime;
 use Jot\HfRepository\Entity;
 use Jot\HfRepository\Entity\EntityFactory;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\InvalidEntityException;
-use Jot\HfValidator\ValidatorChain;
 use Jot\HfValidator\ValidatorInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
+/**
+ * @internal
+ */
 #[CoversClass(Entity::class)]
 class EntityTest extends TestCase
 {
@@ -34,10 +44,10 @@ class EntityTest extends TestCase
     {
         // Arrange
         $data = ['name' => 'New Entity', 'email' => 'new@example.com'];
-        
+
         // Act
         $entity = new TestEntity($data);
-        
+
         // Assert
         $this->assertEquals('New Entity', $entity->name);
         $this->assertEquals('new@example.com', $entity->email);
@@ -58,7 +68,7 @@ class EntityTest extends TestCase
     {
         // Arrange & Assert
         $this->expectException(InvalidEntityException::class);
-        
+
         // Act
         $value = $this->sut->nonExistentProperty;
     }
@@ -69,10 +79,10 @@ class EntityTest extends TestCase
     {
         // Arrange
         $id = 'test-id-123';
-        
+
         // Act
         $result = $this->sut->setId($id);
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertEquals($id, $this->sut->getId());
@@ -84,10 +94,10 @@ class EntityTest extends TestCase
     {
         // Arrange - default state should be STATE_CREATE
         $this->assertEquals(Entity::STATE_CREATE, $this->sut->getEntityStateForTest());
-        
+
         // Act
         $result = $this->sut->setEntityState(Entity::STATE_UPDATE);
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertEquals(Entity::STATE_UPDATE, $this->sut->getEntityStateForTest());
@@ -99,7 +109,7 @@ class EntityTest extends TestCase
     {
         // Arrange & Assert
         $this->expectException(EntityValidationWithErrorsException::class);
-        
+
         // Act
         $this->sut->setEntityState('invalid_state');
     }
@@ -113,10 +123,10 @@ class EntityTest extends TestCase
         $salt = 'test-salt';
         $encryptionKey = 'test-encryption-key';
         $expectedHash = hash_hmac('sha256', 'test@example.com' . $salt, $encryptionKey);
-        
+
         // Act
         $result = $this->sut->createHash($property, $salt, $encryptionKey);
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertEquals($expectedHash, $this->sut->email);
@@ -127,14 +137,14 @@ class EntityTest extends TestCase
     public function testHideProperty(): void
     {
         // Arrange
-        $reflectionClass = new \ReflectionClass($this->sut);
+        $reflectionClass = new ReflectionClass($this->sut);
         $method = $reflectionClass->getMethod('isHidden');
         $method->setAccessible(true);
-        
+
         // Act
         $result = $this->sut->hide('name');
         $isHidden = $method->invoke($this->sut, 'name');
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertTrue($isHidden);
@@ -145,15 +155,15 @@ class EntityTest extends TestCase
     public function testHideMultipleProperties(): void
     {
         // Arrange
-        $reflectionClass = new \ReflectionClass($this->sut);
+        $reflectionClass = new ReflectionClass($this->sut);
         $method = $reflectionClass->getMethod('isHidden');
         $method->setAccessible(true);
-        
+
         // Act
         $result = $this->sut->hide(['name', 'email']);
         $isNameHidden = $method->invoke($this->sut, 'name');
         $isEmailHidden = $method->invoke($this->sut, 'email');
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertTrue($isNameHidden);
@@ -166,10 +176,10 @@ class EntityTest extends TestCase
     {
         // Arrange
         $this->sut->setId('test-id-123');
-        
+
         // Act
         $result = $this->sut->toArray();
-        
+
         // Assert
         $this->assertIsArray($result);
         $this->assertArrayHasKey('id', $result);
@@ -186,10 +196,10 @@ class EntityTest extends TestCase
     {
         // Arrange
         $this->sut->hide('email');
-        
+
         // Act
         $result = $this->sut->toArray();
-        
+
         // Assert
         $this->assertIsArray($result);
         $this->assertArrayHasKey('name', $result);
@@ -206,12 +216,12 @@ class EntityTest extends TestCase
             ->method('validate')
             ->with($this->sut->name)
             ->willReturn(true);
-            
+
         $this->sut->addValidator('name', $validator);
-        
+
         // Act
         $result = $this->sut->validate();
-        
+
         // Assert
         $this->assertTrue($result);
         $this->assertEmpty($this->sut->getErrors());
@@ -231,12 +241,12 @@ class EntityTest extends TestCase
         $validator->expects($this->once())
             ->method('consumeErrors')
             ->willReturn($errors);
-            
+
         $this->sut->addValidator('name', $validator);
-        
+
         // Act
         $result = $this->sut->validate();
-        
+
         // Assert
         $this->assertFalse($result);
         $this->assertEquals(['name' => $errors], $this->sut->getErrors());
@@ -248,17 +258,17 @@ class EntityTest extends TestCase
     {
         // Arrange
         $this->sut->setEntityState(Entity::STATE_UPDATE);
-        
+
         $validator = $this->createMock(ValidatorInterface::class);
         $validator->method('validate')
             ->with($this->sut->name)
             ->willReturn(true);
-            
+
         $this->sut->addValidator('name', $validator);
-        
+
         // Act
         $result = $this->sut->validate();
-        
+
         // Assert
         $this->assertTrue($result);
     }
@@ -269,10 +279,10 @@ class EntityTest extends TestCase
     {
         // Arrange
         $data = ['user_name' => 'John Doe', 'user_email' => 'john@example.com'];
-        
+
         // Act
         $entity = new TestEntityWithCamelCase($data);
-        
+
         // Assert
         $this->assertEquals('John Doe', $entity->userName);
         $this->assertEquals('john@example.com', $entity->userEmail);
@@ -283,40 +293,40 @@ class EntityTest extends TestCase
     public function testToArrayWithDateTime(): void
     {
         // Arrange
-        $now = new \DateTime();
+        $now = new DateTime();
         $entity = new TestEntityWithDateTime(['created_at' => $now]);
-        
+
         // Act
         $result = $entity->toArray();
-        
+
         // Assert
         $this->assertArrayHasKey('created_at', $result);
         $this->assertEquals($now->format(DATE_ATOM), $result['created_at']);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testGetEntityFactoryCreatesDefaultFactory(): void
     {
         // Act
         $factory = $this->sut->getEntityFactory();
-        
+
         // Assert
         $this->assertInstanceOf(EntityFactoryInterface::class, $factory);
         $this->assertInstanceOf(EntityFactory::class, $factory);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testSetEntityFactory(): void
     {
         // Arrange
         $mockFactory = $this->createMock(EntityFactoryInterface::class);
-        
+
         // Act
         $result = $this->sut->setEntityFactory($mockFactory);
         $factory = $this->sut->getEntityFactory();
-        
+
         // Assert
         $this->assertSame($this->sut, $result);
         $this->assertSame($mockFactory, $factory);
@@ -324,15 +334,16 @@ class EntityTest extends TestCase
 }
 
 /**
- * Test implementation of Entity for testing purposes
+ * Test implementation of Entity for testing purposes.
  */
 class TestEntity extends Entity
 {
     protected string $name;
+
     protected string $email;
-    
+
     /**
-     * Get the entity state (for testing purposes)
+     * Get the entity state (for testing purposes).
      */
     public function getEntityStateForTest(): string
     {
@@ -341,18 +352,19 @@ class TestEntity extends Entity
 }
 
 /**
- * Test implementation of Entity with camelCase properties
+ * Test implementation of Entity with camelCase properties.
  */
 class TestEntityWithCamelCase extends Entity
 {
     protected string $userName;
+
     protected string $userEmail;
 }
 
 /**
- * Test implementation of Entity with DateTime property
+ * Test implementation of Entity with DateTime property.
  */
 class TestEntityWithDateTime extends Entity
 {
-    protected \DateTime $createdAt;
+    protected DateTime $createdAt;
 }

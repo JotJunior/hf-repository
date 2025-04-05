@@ -23,12 +23,7 @@
   ],
   "extra": {
     "hyperf": {
-      "config": "Jot\\HfRepository\\ConfigProvider",
-      "annotations": {
-        "scan": [
-          "src"
-        ]
-      }
+      "config": "Jot\\HfRepository\\ConfigProvider"
     }
   },
   "require": {
@@ -46,7 +41,8 @@
   },
   "require-dev": {
     "fakerphp/faker": "^1.24",
-    "phpunit/phpunit": "^10.5"
+    "phpunit/phpunit": "^10.5",
+    "friendsofphp/php-cs-fixer": "^3.75"
   },
   "autoload-dev": {
     "psr-4": {
@@ -54,6 +50,8 @@
     }
   },
   "scripts": {
+    "cs-fix": "php-cs-fixer fix $1",
+    "analyse": "phpstan analyse --memory-limit 300M",
     "test": "phpunit",
     "test-dox": "phpunit --testdox",
     "test-coverage": "phpunit --testdox --coverage-html=coverage/ --coverage-filter=src/",

@@ -1,14 +1,26 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
+use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Entity\Traits\HydratableTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Hyperf\Swagger\Annotation as SA;
 
+/**
+ * @internal
+ */
 #[CoversClass(HydratableTrait::class)]
 class HydratableTraitScalarTest extends TestCase
 {
@@ -26,7 +38,7 @@ class HydratableTraitScalarTest extends TestCase
     {
         // Arrange
         $data = [
-            'related_entity' => 123 // Scalar value
+            'related_entity' => 123, // Scalar value
         ];
 
         // Act
@@ -46,8 +58,8 @@ class HydratableTraitScalarTest extends TestCase
         $data = [
             'related_entity' => [
                 'id' => 456,
-                'name' => 'Test Name'
-            ]
+                'name' => 'Test Name',
+            ],
         ];
 
         // Act
@@ -66,7 +78,7 @@ class HydratableTraitScalarTest extends TestCase
     {
         // Arrange
         $data = [
-            'related_entity_without_hydrate' => 789 // Scalar value for a class without hydrate
+            'related_entity_without_hydrate' => 789, // Scalar value for a class without hydrate
         ];
 
         // Act
@@ -81,7 +93,7 @@ class HydratableTraitScalarTest extends TestCase
 }
 
 /**
- * Test class for HydratableTrait with scalar values
+ * Test class for HydratableTrait with scalar values.
  */
 class HydratableTraitScalarTestClass
 {
@@ -95,8 +107,6 @@ class HydratableTraitScalarTestClass
 
     /**
      * Gets the entity factory used to create related entities.
-     * 
-     * @return null Always returns null to force direct instantiation
      */
     public function getEntityFactory(): ?object
     {
@@ -105,46 +115,48 @@ class HydratableTraitScalarTestClass
 }
 
 /**
- * Related entity with hydrate method for testing
+ * Related entity with hydrate method for testing.
  */
 class RelatedEntityWithHydrate
 {
     public ?int $id = null;
+
     public ?string $name = null;
-    
+
     public function __construct(array $data = [])
     {
         $this->hydrate($data);
     }
-    
+
     public function hydrate(array $data): self
     {
         if (isset($data['id'])) {
             $this->id = $data['id'];
         }
-        
+
         if (isset($data['name'])) {
             $this->name = $data['name'];
         }
-        
+
         return $this;
     }
 }
 
 /**
- * Related entity without hydrate method for testing
+ * Related entity without hydrate method for testing.
  */
 class RelatedEntityWithoutHydrate
 {
     public ?int $id = null;
+
     public ?string $name = null;
-    
+
     public function __construct(array $data = [])
     {
         if (isset($data['id'])) {
             $this->id = $data['id'];
         }
-        
+
         if (isset($data['name'])) {
             $this->name = $data['name'];
         }

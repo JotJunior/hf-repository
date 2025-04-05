@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Command;
 
@@ -14,9 +21,9 @@ use Psr\Container\ContainerInterface;
 #[Command]
 class EtcdCommand extends HyperfCommand
 {
-
     #[Inject]
     protected ConfigInterface $config;
+
     #[Inject]
     protected KVInterface $etcd;
 
@@ -39,14 +46,13 @@ class EtcdCommand extends HyperfCommand
         $etcdKey = sprintf('/application/%s', $configKey);
 
         $etcdData = $this->etcd->get($etcdKey);
-        $etcdKeyExists = !empty($etcdData['kvs'][0]['value']);
+        $etcdKeyExists = ! empty($etcdData['kvs'][0]['value']);
 
-        if ($etcdKeyExists && 'y' !== $this->ask('The key already exists, do you want to overwrite it? [y/N]', 'N')) {
+        if ($etcdKeyExists && $this->ask('The key already exists, do you want to overwrite it? [y/N]', 'N') !== 'y') {
             $this->line('Aborted.');
             return;
         }
 
         $this->etcd->put($etcdKey, json_encode($this->config->get($configKey), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-
     }
 }

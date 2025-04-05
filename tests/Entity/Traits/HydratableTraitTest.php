@@ -1,7 +1,18 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
+
 namespace Jot\HfRepository\Tests\Entity\Traits;
 
+use DateTime;
+use Exception;
 use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Entity\EntityFactory;
 use Jot\HfRepository\Entity\EntityFactoryInterface;
@@ -11,11 +22,22 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use ReflectionClass;
+use ReflectionProperty;
 
+/**
+ * @internal
+ */
 #[CoversClass(HydratableTrait::class)]
 class HydratableTraitTest extends TestCase
 {
     private HydratableTraitTestClass $sut;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->sut = new HydratableTraitTestClass();
+    }
 
     #[Test]
     #[Group('unit')]
@@ -71,7 +93,7 @@ class HydratableTraitTest extends TestCase
         $this->assertSame($this->sut, $result);
         $this->assertEquals('Test Name', $this->sut->name);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testHydrateWithRelatedClassFromAnnotation(): void
@@ -80,8 +102,8 @@ class HydratableTraitTest extends TestCase
         $data = [
             'related_entity' => [
                 'id' => 123,
-                'name' => 'Test Related Entity'
-            ]
+                'name' => 'Test Related Entity',
+            ],
         ];
 
         // Act
@@ -93,7 +115,7 @@ class HydratableTraitTest extends TestCase
         $this->assertEquals(123, $this->sut->relatedEntity->id);
         $this->assertEquals('Test Related Entity', $this->sut->relatedEntity->name);
     }
-    
+
     #[Test]
     #[Group('unit')]
     public function testHydrateWithEntityFactory(): void
@@ -102,10 +124,10 @@ class HydratableTraitTest extends TestCase
         $data = [
             'related_entity' => [
                 'id' => 456,
-                'name' => 'Factory Created Entity'
-            ]
+                'name' => 'Factory Created Entity',
+            ],
         ];
-        
+
         // Create a mock EntityFactory
         $mockEntityFactory = $this->createMock(EntityFactoryInterface::class);
         $mockEntityFactory->expects($this->once())
@@ -115,7 +137,7 @@ class HydratableTraitTest extends TestCase
                 $this->equalTo(['id' => 456, 'name' => 'Factory Created Entity'])
             )
             ->willReturn(new RelatedEntity(['id' => 456, 'name' => 'Factory Created Entity']));
-        
+
         // Set the mock factory
         $this->sut->setEntityFactory($mockEntityFactory);
 
@@ -178,7 +200,7 @@ class HydratableTraitTest extends TestCase
     {
         // Arrange
         $this->sut->name = 'Test Name';
-        $this->sut->createdAt = new \DateTime('2023-01-01 12:00:00');
+        $this->sut->createdAt = new DateTime('2023-01-01 12:00:00');
 
         // Act
         $result = $this->sut->toArray();
@@ -215,11 +237,11 @@ class HydratableTraitTest extends TestCase
     public function testExtractVariables(): void
     {
         // Arrange
-        $reflection = new \ReflectionClass($this->sut);
+        $reflection = new ReflectionClass($this->sut);
         $method = $reflection->getMethod('extractVariables');
         $method->setAccessible(true);
 
-        $dateTime = new \DateTime('2023-01-01 12:00:00');
+        $dateTime = new DateTime('2023-01-01 12:00:00');
         $array = ['key' => 'value'];
         $object = new RelatedEntity();
         $object->id = 1;
@@ -245,7 +267,7 @@ class HydratableTraitTest extends TestCase
     public function testGetAllProperties(): void
     {
         // Arrange
-        $reflection = new \ReflectionClass($this->sut);
+        $reflection = new ReflectionClass($this->sut);
         $method = $reflection->getMethod('getAllProperties');
         $method->setAccessible(true);
 
@@ -257,7 +279,7 @@ class HydratableTraitTest extends TestCase
         $this->assertNotEmpty($result);
 
         // Verificar se as propriedades da classe estão presentes
-        $propertyNames = array_map(function (\ReflectionProperty $prop) {
+        $propertyNames = array_map(function (ReflectionProperty $prop) {
             return $prop->getName();
         }, $result);
 
@@ -310,7 +332,7 @@ class HydratableTraitTest extends TestCase
         $this->sut->name = 'Test Name';
 
         // Criar um mock de ReflectionProperty que lança exceção
-        $mockReflection = new class() extends \ReflectionClass {
+        $mockReflection = new class extends ReflectionClass {
             public function __construct()
             {
                 // Construtor vazio para evitar erros
@@ -325,7 +347,7 @@ class HydratableTraitTest extends TestCase
 
             private function createMockProperty()
             {
-                return new class() extends \ReflectionProperty {
+                return new class extends ReflectionProperty {
                     public function __construct()
                     {
                         // Construtor vazio para evitar erros
@@ -341,9 +363,9 @@ class HydratableTraitTest extends TestCase
                         // Não faz nada
                     }
 
-                    public function getValue(object $object = null): mixed
+                    public function getValue(?object $object = null): mixed
                     {
-                        throw new \Exception('Cannot access property');
+                        throw new Exception('Cannot access property');
                     }
                 };
             }
@@ -354,6 +376,7 @@ class HydratableTraitTest extends TestCase
             use HydratableTrait;
 
             private $reflection;
+
             public array $hiddenProperties = [];
 
             public function __construct($reflection)
@@ -376,59 +399,60 @@ class HydratableTraitTest extends TestCase
         // A propriedade que lança exceção deve ser ignorada
         $this->assertArrayNotHasKey('exception_property', $result);
     }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->sut = new HydratableTraitTestClass();
-    }
 }
 
 /**
- * Test class for HydratableTrait
+ * Test class for HydratableTrait.
  */
 class HydratableTraitTestClass
 {
     use HydratableTrait;
 
     public string $name;
+
     public string $email;
-    
-    protected ?EntityFactoryInterface $entityFactory = null;
 
     #[SA\Property(x: ['php_type' => RelatedEntity::class])]
     public ?RelatedEntity $relatedEntity = null;
-    public ?\DateTime $createdAt = null;
+
+    public ?DateTime $createdAt = null;
+
     public ?LoggerInterface $logger = null;
+
     public array $hiddenProperties = [];
+
     public array $arrayProperty = [];
+
     public bool $exceptionOnAccess = false;
 
     /**
-     * @SA\Property(x={"php_type"="Jot\HfRepository\Tests\Entity\Traits\RelatedEntity"})
+     * @SA\Property(x={"php_type": "Jot\HfRepository\Tests\Entity\Traits\RelatedEntity"})
      */
     public ?RelatedEntity $docCommentRelatedEntity = null;
 
+    protected ?EntityFactoryInterface $entityFactory = null;
+
     /**
-     * Property that will throw an exception during hydration
+     * Property that will throw an exception during hydration.
+     * @param mixed $value
      */
     public function setExceptionProperty($value): void
     {
-        throw new \Exception('Exception during hydration');
+        throw new Exception('Exception during hydration');
     }
 
     /**
-     * Getter que lança exceção ao ser acessado
+     * Getter que lança exceção ao ser acessado.
      */
     public function getExceptionOnAccess(): bool
     {
-        throw new \Exception('Cannot access property');
+        throw new Exception('Cannot access property');
     }
-    
+
     /**
      * Gets the entity factory used to create related entities.
-     * 
-     * @return EntityFactoryInterface|null The entity factory instance or null if not set
+     *
+     * @return null|EntityFactoryInterface The entity factory instance or null if not set
      */
     public function getEntityFactory(): ?EntityFactoryInterface
     {
@@ -436,15 +460,14 @@ class HydratableTraitTestClass
             // Lazily create a default entity factory if none is set
             $this->entityFactory = new EntityFactory();
         }
-        
+
         return $this->entityFactory;
     }
-    
+
     /**
      * Sets the entity factory to use for creating related entities.
-     * 
+     *
      * @param EntityFactoryInterface $entityFactory The entity factory instance
-     * @return self
      */
     public function setEntityFactory(EntityFactoryInterface $entityFactory): self
     {
@@ -454,19 +477,20 @@ class HydratableTraitTestClass
 }
 
 /**
- * Related entity for testing
+ * Related entity for testing.
  */
 class RelatedEntity
 {
     public ?int $id = null;
+
     public ?string $name = null;
-    
+
     public function __construct(array $data = [])
     {
         if (isset($data['id'])) {
             $this->id = $data['id'];
         }
-        
+
         if (isset($data['name'])) {
             $this->name = $data['name'];
         }

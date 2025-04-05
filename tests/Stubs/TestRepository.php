@@ -1,6 +1,13 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of hf-repository
+ *
+ * @link     https://github.com/JotJunior/hf-repository
+ * @contact  hf-repository@jot.com.br
+ * @license  MIT
+ */
 
 namespace Jot\HfRepository\Tests\Stubs;
 
@@ -15,16 +22,12 @@ use Jot\HfRepository\Repository;
 class TestRepository extends Repository
 {
     /**
-     * Entity class name
+     * Entity class name.
      */
     protected string $entity = RepositoryTestEntity::class;
-    
+
     /**
-     * Constructor with explicit dependencies for testing
-     * 
-     * @param QueryBuilderInterface $queryBuilder
-     * @param QueryParserInterface $queryParser
-     * @param EntityFactoryInterface $entityFactory
+     * Constructor with explicit dependencies for testing.
      */
     public function __construct(
         QueryBuilderInterface $queryBuilder,
@@ -34,14 +37,12 @@ class TestRepository extends Repository
         $this->queryBuilder = $queryBuilder;
         $this->queryParser = $queryParser;
         $this->entityFactory = $entityFactory;
-        
+
         parent::__construct();
     }
-    
+
     /**
-     * Get the index name for testing
-     * 
-     * @return string
+     * Get the index name for testing.
      */
     protected function getIndexName(): string
     {
