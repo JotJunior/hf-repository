@@ -18,3 +18,5 @@ phpunit.xml
 runtime/
 vendor/
 .windsurfrules
+sonar-scan.sh
+.scannerwork

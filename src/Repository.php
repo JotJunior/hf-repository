@@ -327,7 +327,7 @@ abstract class Repository implements RepositoryInterface
 
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query
-            ->limit($perPage)
+            ->limit((int)$perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
 

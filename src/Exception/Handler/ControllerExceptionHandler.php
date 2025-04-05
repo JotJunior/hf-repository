@@ -20,6 +20,8 @@ use Jot\HfRepository\Exception\RepositoryCreateException;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
+use function Hyperf\Translation\__;
+
 class ControllerExceptionHandler extends ExceptionHandler
 {
     private const EXCEPTION_HANDLERS = [
