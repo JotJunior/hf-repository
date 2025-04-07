@@ -48,7 +48,7 @@ use function Hyperf\Support\make;
 class {{class_name}}Controller extends AbstractController
 {
     #[Inject]
-    protected {{class_name}}Repository $repository;
+    protected {{class_name}}Service $service;
 
     #[SA\Get(
         path: '/{{api_version}}/{{module_name}}/{{service_name}}',
