@@ -1,17 +1,30 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
+ *
+ * @author   Joao Zanon <jot@jot.com.br>
+ * @link     https://github.com/JotJunior/hf-repository
+ * @license  MIT
+ */
 
 namespace {{namespace}};
 
 use App\Controller\AbstractController;
 use App\Entity\{{class_name}}\{{class_name}};
-use App\Repository\{{class_name}}Repository;
+use App\Service\{{class_name}}Service;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Annotation\Middleware;
 use Hyperf\HttpServer\Annotation\RequestMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
+use Jot\HfShield\Annotation\Scope;
+use Jot\HfShield\Middleware\BearerStrategy;
+use Jot\HfShield\Middleware\PublicStrategy;
+use Jot\HfShield\Middleware\SessionStrategy;
+use Jot\HfShield\Middleware\SignedJwtStrategy;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 use function Hyperf\Support\make;
@@ -22,12 +35,12 @@ use function Hyperf\Support\make;
     description: 'Endpoints related to {{service_name}} management'
 )]
 #[SA\Schema(
-    schema: 'app.error.response',
+    schema: '{{module_name}}.error.response',
     required: ['result', 'error'],
     properties: [
-        new SA\Property(property: 'result', type: 'string', example: 'error'),
-        new SA\Property(property: 'error', type: 'string', example: 'Error message'),
-        new SA\Property(property: 'data', type: 'string|array', example: null),
+        new SA\Property(property: 'result', description: 'Request result (success|error)', type: 'string', example: 'error'),
+        new SA\Property(property: 'error', description: 'Friendly error message', type: 'string', example: 'Error message'),
+        new SA\Property(property: 'data', description: 'Json content response', type: 'string|array', example: null),
     ],
     type: 'object'
 )]
@@ -38,9 +51,10 @@ class {{class_name}}Controller extends AbstractController
     protected {{class_name}}Repository $repository;
 
     #[SA\Get(
-        path: '/{{api_version}}/{{service_name}}',
-        description: 'Retrieve a list of {{service_name}} with optional pagination.',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}',
+        description: 'Retrieve a list of {{service_name}} with optional pagination and filters.',
         summary: 'Get {{class_name}}s List',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:list']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
@@ -101,19 +115,31 @@ class {{class_name}}Controller extends AbstractController
             new SA\Response(
                 response: 400,
                 description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 500,
                 description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
         ]
     )]
-    #[RateLimit(create: 1, capacity: 5)]
-    public function get{{class_name}}sList(): PsrResponseInterface
+    #[RateLimit(create: 1, capacity: 10)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:list')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function get{{class_name}}List(): PsrResponseInterface
     {
-        $result = $this->repository->paginate($this->request->query());
+        $result = $this->service->paginate($this->request->query());
         if ($result['result'] === 'error') {
             return $this->response->withStatus(400)->json($result);
         }
@@ -124,9 +150,10 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Get(
-        path: '/{{api_version}}/{{service_name}}/{id}',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
         description: 'Retrieve the details of a specific {{service_name}} identified by ID.',
         summary: 'Get {{class_name}} Data',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:view']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
@@ -165,26 +192,38 @@ class {{class_name}}Controller extends AbstractController
             new SA\Response(
                 response: 400,
                 description: 'Server Error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 500,
                 description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
         ]
     )]
-    #[RateLimit(create: 1, capacity: 5)]
+    #[RateLimit(create: 1, capacity: 10)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:view')]
+    #[Middleware(middleware: {{middleware_strategy}})]
     public function get{{class_name}}Data(string $id): PsrResponseInterface
     {
-        $entity = $this->repository->find($id);
+        $data = $this->service->getData($id);
 
-        if (empty($entity)) {
+        if (empty($data)) {
             return $this->response->withStatus(404)->json([
                 'data' => null,
                 'result' => 'not-found',
@@ -192,17 +231,14 @@ class {{class_name}}Controller extends AbstractController
             ]);
         }
 
-        return $this->response->json([
-            'data' => $entity->toArray(),
-            'result' => 'success',
-            'error' => null,
-        ]);
+        return $this->response->json($data);
     }
 
     #[SA\Post(
-        path: '/{{api_version}}/{{service_name}}',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}',
         description: 'Create a new {{service_name}}.',
         summary: 'Create a New {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:create']]],
         requestBody: new SA\RequestBody(
             required: true,
             content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
@@ -215,35 +251,41 @@ class {{class_name}}Controller extends AbstractController
                 content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
             ),
             new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
                 response: 400,
                 description: 'Bad request',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 500,
                 description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
         ]
     )]
-    #[RateLimit(create: 1, capacity: 2)]
+    #[RateLimit(create: 1, capacity: 5)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:create')]
+    #[Middleware(middleware: {{middleware_strategy}})]
     public function create{{class_name}}(): PsrResponseInterface
     {
-        $entity = make({{class_name}}::class, ['data' => $this->request->all()]);
-
-        $response = $this->repository->create($entity);
-
-        return $this->response->withStatus(201)->json([
-            'data' => $response->toArray(),
-            'result' => 'success',
-            'error' => null,
-        ]);
+        $result = $this->service->create($this->request->all());
+        return $this->response->withStatus(201)->json($result);
     }
 
     #[SA\Put(
-        path: '/{{api_version}}/{{service_name}}/{id}',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
         description: 'Update the details of an existing {{service_name}}.',
         summary: 'Update an existing {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:update']]],
         requestBody: new SA\RequestBody(
             required: true,
             content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
@@ -265,40 +307,46 @@ class {{class_name}}Controller extends AbstractController
                 content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
             ),
             new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
                 response: 400,
                 description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} Not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 500,
                 description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
         ]
     )]
     #[RateLimit(create: 1, capacity: 2)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:update')]
+    #[Middleware(middleware: {{middleware_strategy}})]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
-        $entity = make({{class_name}}::class, ['id' => $id, ...$this->request->all()]);
-
-        $response = $this->repository->update($entity);
-
-        return $this->response->json([
-            'data' => $response->toArray(),
-            'result' => 'success',
-            'error' => null,
-        ]);
+        $result = $this->service->update($id, $this->request->all());
+        return $this->response->json($result);
     }
 
     #[SA\Delete(
-        path: '/{{api_version}}/{{service_name}}/{id}',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
         description: 'Delete an existing {{service_name}} by its unique identifier.',
         summary: 'Delete an existing {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:delete']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
@@ -338,34 +386,44 @@ class {{class_name}}Controller extends AbstractController
             new SA\Response(
                 response: 400,
                 description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} Not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
             new SA\Response(
                 response: 500,
                 description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.error.response')
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
             ),
         ]
     )]
     #[RateLimit(create: 1, capacity: 2)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:delete')]
+    #[Middleware(middleware: {{middleware_strategy}})]
     public function delete{{class_name}}(string $id): PsrResponseInterface
     {
-        return $this->response->json([
-            'data' => null,
-            'result' => $this->repository->delete($id) ? 'success' : 'error',
-            'error' => null,
-        ]);
+        $result = $this->service->delete($id);
+        return $this->response->json($result);
     }
 
     #[SA\Head(
-        path: '/{{api_version}}/{{service_name}}/{id}',
+        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
         description: 'Check if a valid {{service_name}} exists by its unique identifier.',
         summary: 'Check {{service_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:verify']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
@@ -383,6 +441,16 @@ class {{class_name}}Controller extends AbstractController
                 content: null
             ),
             new SA\Response(
+                response: 401,
+                description: 'Unauthorized access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
+                response: 403,
+                description: 'Forbidden access',
+                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+            ),
+            new SA\Response(
                 response: 404,
                 description: '{{class_name}} not Found',
                 content: null
@@ -390,13 +458,15 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 1, capacity: 5)]
-    public function check{{class_name}}(string $id): PsrResponseInterface
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:verify')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function verify{{class_name}}(string $id): PsrResponseInterface
     {
-        return $this->response->withStatus($this->repository->exists($id) ? 204 : 404)->raw('');
+        $exists = $this->service->exists($id);
+        return $this->response->withStatus($exists ? 204 : 404)->raw('');
     }
 
-    #[RequestMapping(path: '/{{api_version}}/{{service_name}}[/[{id}]]', methods: ['OPTIONS'])]
-    #[RateLimit(create: 1, capacity: 2)]
+    #[RequestMapping(path: '/{{api_version}}/{{module_name}}/{{service_name}}[/[{id}]]', methods: ['OPTIONS'])]
     public function requestOptions(): PsrResponseInterface
     {
         return $this->response

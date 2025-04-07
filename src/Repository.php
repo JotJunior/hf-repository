@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 /**
- * This file is part of hf-repository
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
  *
+ * @author   Joao Zanon <jot@jot.com.br>
  * @link     https://github.com/JotJunior/hf-repository
- * @contact  hf-repository@jot.com.br
  * @license  MIT
  */
 
@@ -23,6 +23,7 @@ use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
 use ReflectionException;
+
 use function Hyperf\Translation\__;
 
 /**
@@ -134,7 +135,6 @@ abstract class Repository implements RepositoryInterface
     {
         $contextKey = self::CONTEXT_REPOSITORY . 'find.' . $this->index . '.' . $id;
 
-        // Check if we already have this entity in the current coroutine context
         $cachedEntity = Context::get($contextKey);
         if ($cachedEntity !== null) {
             return $cachedEntity;
@@ -184,7 +184,7 @@ abstract class Repository implements RepositoryInterface
 
         $createdEntity = $this->entityFactory->create($this->entity, $result['data']);
 
-        if (!$createdEntity instanceof EntityInterface) {
+        if (! $createdEntity instanceof EntityInterface) {
             $message = __('hf-repository.failed_create_entity_instance');
             throw new RepositoryCreateException($message);
         }
@@ -205,7 +205,7 @@ abstract class Repository implements RepositoryInterface
      */
     protected function validateEntity(EntityInterface $entity): void
     {
-        if (!$entity->validate()) {
+        if (! $entity->validate()) {
             throw new EntityValidationWithErrorsException($entity->getErrors());
         }
     }
@@ -302,7 +302,6 @@ abstract class Repository implements RepositoryInterface
 
     /**
      * Paginates a dataset based on the provided parameters.
-     * Optimized for Swoole/Hyperf with coroutine safety.
      * @param array $params the parameters used to filter or query the dataset
      * @param int $page the current page number (default is 1)
      * @param int $perPage the number of items to display per page (default is 10)
@@ -311,28 +310,17 @@ abstract class Repository implements RepositoryInterface
      */
     public function paginate(array $params, int $page = 1, int $perPage = 10): array
     {
-        // Create a unique context key based on the parameters and pagination info
-        $paginationInfo = ['page' => $page, 'perPage' => $perPage];
-        $contextKey = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.'
-            . md5(serialize($params) . serialize($paginationInfo));
-
-        // Check if we already have this result in the current coroutine context
-        $cachedResults = Context::get($contextKey);
-        if ($cachedResults !== null) {
-            return $cachedResults;
-        }
-
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
 
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
         $result = $query
-            ->limit((int)$perPage)
+            ->limit((int) $perPage)
             ->offset(($page - 1) * $perPage)
             ->execute();
 
         $entities = [];
-        if (!empty($result['data'])) {
+        if (! empty($result['data'])) {
             $entities = array_map(
                 function ($item) {
                     $entity = $this->entityFactory->create($this->entity, $item);
@@ -351,17 +339,12 @@ abstract class Repository implements RepositoryInterface
 
         $result['data'] = $entities;
 
-        $paginatedResult = [
+        return [
             ...$result,
-            'current_page' => (int)$page,
-            'per_page' => (int)$perPage,
+            'current_page' => (int) $page,
+            'per_page' => (int) $perPage,
             'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
         ];
-
-        // Store in context for this coroutine
-        Context::set($contextKey, $paginatedResult);
-
-        return $paginatedResult;
     }
 
     /**
@@ -382,7 +365,7 @@ abstract class Repository implements RepositoryInterface
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
 
-        if (!in_array($result['result'], ['updated', 'noop'])) {
+        if (! in_array($result['result'], ['updated', 'noop'])) {
             $message = __('hf-repository.failed_update_entity');
             throw new RepositoryUpdateException($result['error'] ?? $message);
         }
@@ -410,7 +393,7 @@ abstract class Repository implements RepositoryInterface
         // Get all context keys for this coroutine
         $contextKeys = Context::getContainer();
 
-        if (!is_array($contextKeys)) {
+        if (! is_array($contextKeys)) {
             return;
         }
 

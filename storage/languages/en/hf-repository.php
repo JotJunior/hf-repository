@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 /**
- * This file is part of hf-repository
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
  *
+ * @author   Joao Zanon <jot@jot.com.br>
  * @link     https://github.com/JotJunior/hf-repository
- * @contact  hf-repository@jot.com.br
  * @license  MIT
  */
 return [
@@ -29,6 +29,7 @@ return [
         'file_exists' => 'The file %s already exists. Overwrite file? [y/n/a]',
         'skip_file' => '[SKIP] %s',
         'index_not_exists' => 'Index %s does not exist.',
+        'index_not_found' => 'Index <fg=cyan>:index</> not found',
         'confirm_crud_creation' => 'Are you sure you want to create a CRUD for index %s? [Y/n]',
         'aborting' => 'Aborting...',
         'creating_crud' => 'Creating the CRUD for index %s...',

@@ -14,20 +14,21 @@ namespace Jot\HfRepository\Command;
 use Hyperf\Command\Annotation\Command;
 use Jot\HfRepository\Exception\IndexNotFoundException;
 use Symfony\Component\Console\Input\InputOption;
+
 use function Hyperf\Translation\__;
 
 #[Command]
-class GenerateEntityCommand extends AbstractCommand
+class GenerateServiceCommand extends AbstractCommand
 {
-    protected string $command = 'repo:entity';
+    protected string $command = 'repo:service';
 
     public function configure(): void
     {
         parent::configure();
-        $this->setDescription('Creating entity classes based on the elasticsearch mapping configuration.');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch mapping name');
-        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Rewrite mapping file');
+        $this->setDescription(__('hf-repository.command.service_description'));
+        $this->addUsage('repo:service --index=index_name [--force]');
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
     }
 
     public function handle()
@@ -39,9 +40,9 @@ class GenerateEntityCommand extends AbstractCommand
             return;
         }
 
-        $this->force = boolval($this->input->getOption('force'));
-        $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
+        $this->force = $this->input->getOption('force');
 
-        $this->createEntities($indexName);
+
+        $this->createService($indexName);
     }
 }

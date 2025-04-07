@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 /**
- * This file is part of hf-repository
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
  *
+ * @author   Joao Zanon <jot@jot.com.br>
  * @link     https://github.com/JotJunior/hf-repository
- * @contact  hf-repository@jot.com.br
  * @license  MIT
  */
 
@@ -13,6 +13,7 @@ namespace Jot\HfRepository\Command;
 
 use Hyperf\Command\Annotation\Command;
 use Hyperf\Stringable\Str;
+use Jot\HfRepository\Exception\IndexNotFoundException;
 use Symfony\Component\Console\Input\InputOption;
 
 use function Hyperf\Translation\__;
@@ -35,7 +36,13 @@ class GenerateCrudCommand extends AbstractCommand
 
     public function handle()
     {
-        $indexName = $this->getIndexName();
+        try {
+            $indexName = $this->getIndexName();
+        } catch (IndexNotFoundException $e) {
+            $this->failed($e->getMessage());
+            return;
+        }
+
         $this->input->getOption('array-fields') && $this->setArrayFields(explode(',', $this->input->getOption('array-fields')));
 
         if (! $this->esClient->indices()->exists(['index' => $this->getIndexName(removePrefix: false)])) {
@@ -68,6 +75,10 @@ class GenerateCrudCommand extends AbstractCommand
         $this->newLine();
         $this->line('Start creating repository...');
         $this->createRepository($indexName);
+
+        $this->newLine();
+        $this->line('Start creating service...');
+        $this->createService($indexName);
 
         $this->newLine();
         $this->line('Start creating controller...');

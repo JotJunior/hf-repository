@@ -1,0 +1,86 @@
+<?php
+
+declare(strict_types=1);
+/**
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
+ *
+ * @author   Joao Zanon <jot@jot.com.br>
+ * @link     https://github.com/JotJunior/hf-repository
+ * @license  MIT
+ */
+
+namespace App\Service;
+
+use App\Entity\{{class_name}}\{{class_name}} as Entity;
+use App\Repository\{{class_name}}Repository;
+use Hyperf\Cache\Annotation\Cacheable;
+use Hyperf\Cache\Annotation\CacheEvict;
+use Hyperf\Cache\Annotation\CachePut;
+use Hyperf\Di\Annotation\Inject;
+
+use function Hyperf\Support\make;
+
+class {{class_name}}Service
+{
+    #[Inject]
+    protected {{class_name}}Repository $repository;
+    protected Entity $entity;
+
+    public function paginate(array $query): array
+    {
+        return $this->repository->paginate($query);
+    }
+
+    #[Cacheable(prefix: '{{cache_prefix}}', ttl: 600)]
+    public function getData(string $id): array
+    {
+        $entity = $this->repository->find($id);
+
+        return [
+            'data' => $entity->toArray(),
+            'result' => 'success',
+            'error' => null,
+        ];
+    }
+
+    #[CachePut(prefix: '{{cache_prefix}}', ttl: 600)]
+    public function create(array $data): array
+    {
+        $entity = make(Entity::class, ['data' => $data]);
+        $result = $this->repository->create($entity);
+
+        return [
+            'data' => $result->toArray(),
+            'result' => 'success',
+            'error' => null,
+        ];
+    }
+
+    #[CachePut(prefix: '{{cache_prefix}}', ttl: 600)]
+    public function update(string $id, array $data): array
+    {
+        $entity = make(Entity::class, ['id' => $id, ...$data]);
+        $result = $this->repository->update($entity);
+
+        return [
+            'data' => $result->toArray(),
+            'result' => 'success',
+            'error' => null,
+        ];
+    }
+
+    #[CacheEvict(prefix: '{{cache_prefix}}')]
+    public function delete(string $id): array
+    {
+        return [
+            'data' => null,
+            'result' => $this->repository->delete($id) ? 'success' : 'error',
+            'error' => null,
+        ];
+    }
+
+    public function exists(string $id): bool
+    {
+        return $this->repository->exists($id);
+    }
+}

@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 /**
- * This file is part of hf-repository
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
  *
+ * @author   Joao Zanon <jot@jot.com.br>
  * @link     https://github.com/JotJunior/hf-repository
- * @contact  hf-repository@jot.com.br
  * @license  MIT
  */
 
 namespace Jot\HfRepository\Command;
 
 use Hyperf\Command\Annotation\Command;
+use Jot\HfRepository\Exception\IndexNotFoundException;
 use Symfony\Component\Console\Input\InputOption;
 
 use function Hyperf\Translation\__;
@@ -27,17 +28,20 @@ class GenerateControllerCommand extends AbstractCommand
         $this->setDescription(__('hf-repository.command.controller_description'));
         $this->addUsage('repo:controller --index=index_name [--api-version=v1] [--force]');
         $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
         $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
     }
 
     public function handle()
     {
-        $indexName = $this->getIndexName();
+        try {
+            $indexName = $this->getIndexName();
+        } catch (IndexNotFoundException $e) {
+            $this->failed($e->getMessage());
+            return;
+        }
 
-        $apiVersion = $this->input->getOption('api-version');
         $this->force = $this->input->getOption('force');
 
-        $this->createController($indexName, $apiVersion);
+        $this->createController($indexName);
     }
 }
