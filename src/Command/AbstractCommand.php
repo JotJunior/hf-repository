@@ -40,6 +40,8 @@ class AbstractCommand extends HyperfCommand
 
     protected string $apiVersion;
 
+    protected string $apiDescription;
+
     protected string $middlewareStrategy;
 
     public function __construct(
@@ -53,6 +55,7 @@ class AbstractCommand extends HyperfCommand
         $shieldConfig = $this->config->get('hf_shield');
         $this->moduleName = $shieldConfig['module_name'] ?? 'api';
         $this->apiVersion = $shieldConfig['api_version'] ?? 'v1';
+        $this->apiDescription = $shieldConfig['api_description'] ?? '';
         $this->middlewareStrategy = $shieldConfig['middleware_strategy'] ?? 'bearer';
     }
 
@@ -102,7 +105,133 @@ class AbstractCommand extends HyperfCommand
 
         $this->generateFile($controllerFile, $template);
 
-        $this->createAbstractController($apiVersion, $namespace);
+        $this->createAbstractController($namespace);
+    }
+
+    /**
+     * Generates a file with the specified contents and writes it to the given output location.
+     * Prompts the user for confirmation if a file with the same name already exists.
+     *
+     * @param string $outputFile the path to the file to be generated
+     * @param string $contents the content to be written to the file
+     */
+    protected function generateFile(string $outputFile, string $contents): void
+    {
+        if (file_exists($outputFile) && ! $this->force) {
+            $answer = $this->ask(sprintf('The file <fg=yellow>%s</> already exists. Overwrite file? [y/n/a]', $outputFile), 'n');
+            if ($answer === 'a') {
+                $this->force = true;
+            } elseif ($answer !== 'y') {
+                $this->warning('[SKIP] ' . $outputFile);
+                return;
+            }
+        }
+
+        file_put_contents($outputFile, $contents);
+        $this->success($outputFile);
+    }
+
+    /**
+     * Creates an abstract controller file for the specified API version and namespace.
+     *
+     * @param string $namespace the namespace to use for the abstract controller
+     */
+    protected function createAbstractController(string $namespace): void
+    {
+        $controllerDirectory = $this->outputDir(sprintf('/app/Controller/%s', ucfirst($this->apiVersion)));
+
+        $variables = [
+            'namespace' => $namespace,
+            'api_version' => $this->apiVersion,
+            'api_description' => $this->apiDescription,
+        ];
+
+        $template = $this->parseTemplate('abstract-controller', $variables);
+
+        $abstractControllerFile = sprintf('%s/AbstractController.php', $controllerDirectory);
+
+        if (! is_file($abstractControllerFile)) {
+            $this->generateFile($abstractControllerFile, $template);
+        }
+    }
+
+    protected function createService(string $indexName): void
+    {
+        $className = Str::studly(Str::singular($indexName));
+
+        $variables = [
+            'class_name' => $className,
+            'cache_prefix' => Str::snake($className) . ':entity',
+        ];
+
+        $outputDir = $this->outputDir('/app/Service');
+        $serviceFile = sprintf('%s/%sService.php', $outputDir, $className);
+        $template = $this->parseTemplate('service', $variables);
+
+        $this->generateFile($serviceFile, $template);
+    }
+
+    /**
+     * Creates the necessary entity classes based on the provided index name and mapping configuration.
+     *
+     * @param string $indexName the name of the index for which entities need to be created
+     */
+    protected function createEntities(string $indexName): void
+    {
+        $serviceName = Str::snake($indexName);
+        $schemaName = Str::singular($serviceName);
+        $className = ucfirst(Str::camel($schemaName));
+        $namespace = sprintf('App\Entity\%s', $className);
+        $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
+
+        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
+    }
+
+    protected function getIndexName(bool $removePrefix = true): string
+    {
+        $indexName = $this->input->getOption('index');
+        if (empty($indexName)) {
+            $indexName = $this->ask('Please enter the elasticsearch index name:');
+        }
+
+        if ($this->indexPrefix && str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
+            return substr($indexName, strlen($this->indexPrefix) + 1);
+        }
+
+        if ($this->indexPrefix && ! str_starts_with($indexName, $this->indexPrefix) && ! $removePrefix) {
+            return sprintf('%s_%s', $this->indexPrefix, $indexName);
+        }
+
+        if (! $this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
+            throw new IndexNotFoundException(__('hf-repository.command.index_not_found', ['index' => $indexName]));
+        }
+
+        return $indexName;
+    }
+
+    /**
+     * Creates a repository class file for the specified index name.
+     *
+     * @param string $indexName the name of the index to create the repository for
+     */
+    protected function createRepository(string $indexName): void
+    {
+        $namespace = 'App\Repository';
+        $serviceName = Str::snake($indexName);
+        $schemaName = Str::singular($serviceName);
+        $className = ucfirst(Str::camel($schemaName));
+        $entity = str_replace('Repository', '', sprintf('App\Entity\%s\%s', $className, $className));
+
+        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
+        $outputDir = $this->outputDir('/app/Repository');
+        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
+
+        if (file_exists($repositoryFile) && ! $this->force) {
+            $this->warn('Repository class already exists at %s', [$repositoryFile]);
+            return;
+        }
+
+        $this->generateFile($repositoryFile, $template);
     }
 
     /**
@@ -142,86 +271,6 @@ class AbstractCommand extends HyperfCommand
         });
 
         return $template;
-    }
-
-    /**
-     * Generates a file with the specified contents and writes it to the given output location.
-     * Prompts the user for confirmation if a file with the same name already exists.
-     *
-     * @param string $outputFile the path to the file to be generated
-     * @param string $contents the content to be written to the file
-     */
-    protected function generateFile(string $outputFile, string $contents): void
-    {
-        if (file_exists($outputFile) && ! $this->force) {
-            $answer = $this->ask(sprintf('The file <fg=yellow>%s</> already exists. Overwrite file? [y/n/a]', $outputFile), 'n');
-            if ($answer === 'a') {
-                $this->force = true;
-            } elseif ($answer !== 'y') {
-                $this->warning('[SKIP] ' . $outputFile);
-                return;
-            }
-        }
-
-        file_put_contents($outputFile, $contents);
-        $this->success($outputFile);
-    }
-
-    /**
-     * Creates an abstract controller file for the specified API version and namespace.
-     *
-     * @param string $apiVersion the API version to associate with the abstract controller
-     * @param string $namespace the namespace to use for the abstract controller
-     */
-    protected function createAbstractController(string $apiVersion, string $namespace): void
-    {
-        $controllerDirectory = $this->outputDir(sprintf('/app/Controller/%s', ucfirst($apiVersion)));
-
-        $variables = [
-            'namespace' => $namespace,
-        ];
-
-        $template = $this->parseTemplate('abstract-controller', $variables);
-
-        $abstractControllerFile = sprintf('%s/AbstractController.php', $controllerDirectory);
-
-        if (!is_file($abstractControllerFile)) {
-            $this->generateFile($abstractControllerFile, $template);
-        }
-
-
-    }
-
-    protected function createService(string $indexName): void
-    {
-        $className = Str::studly(Str::singular($indexName));
-
-        $variables = [
-            'class_name' => $className,
-            'cache_prefix' => Str::snake($className) . ':entity',
-        ];
-
-        $outputDir = $this->outputDir('/app/Service');
-        $serviceFile = sprintf('%s/%sService.php', $outputDir, $className);
-        $template = $this->parseTemplate('service', $variables);
-
-        $this->generateFile($serviceFile, $template);
-    }
-
-    /**
-     * Creates the necessary entity classes based on the provided index name and mapping configuration.
-     *
-     * @param string $indexName the name of the index for which entities need to be created
-     */
-    protected function createEntities(string $indexName): void
-    {
-        $serviceName = Str::snake($indexName);
-        $schemaName = Str::singular($serviceName);
-        $className = ucfirst(Str::camel($schemaName));
-        $namespace = sprintf('App\Entity\%s', $className);
-        $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
-
-        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
     }
 
     /**
@@ -423,52 +472,5 @@ class AbstractCommand extends HyperfCommand
             $this->failed($e->getMessage());
             return null;
         }
-    }
-
-    protected function getIndexName(bool $removePrefix = true): string
-    {
-        $indexName = $this->input->getOption('index');
-        if (empty($indexName)) {
-            $indexName = $this->ask('Please enter the elasticsearch index name:');
-        }
-
-        if ($this->indexPrefix && str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
-            return substr($indexName, strlen($this->indexPrefix) + 1);
-        }
-
-        if ($this->indexPrefix && ! str_starts_with($indexName, $this->indexPrefix) && ! $removePrefix) {
-            return sprintf('%s_%s', $this->indexPrefix, $indexName);
-        }
-
-        if (! $this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
-            throw new IndexNotFoundException(__('hf-repository.command.index_not_found', ['index' => $indexName]));
-        }
-
-        return $indexName;
-    }
-
-    /**
-     * Creates a repository class file for the specified index name.
-     *
-     * @param string $indexName the name of the index to create the repository for
-     */
-    protected function createRepository(string $indexName): void
-    {
-        $namespace = 'App\Repository';
-        $serviceName = Str::snake($indexName);
-        $schemaName = Str::singular($serviceName);
-        $className = ucfirst(Str::camel($schemaName));
-        $entity = str_replace('Repository', '', sprintf('App\Entity\%s\%s', $className, $className));
-
-        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
-        $outputDir = $this->outputDir('/app/Repository');
-        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
-
-        if (file_exists($repositoryFile) && ! $this->force) {
-            $this->warn('Repository class already exists at %s', [$repositoryFile]);
-            return;
-        }
-
-        $this->generateFile($repositoryFile, $template);
     }
 }

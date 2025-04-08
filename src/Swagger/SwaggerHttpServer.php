@@ -20,7 +20,6 @@ use Throwable;
 
 class SwaggerHttpServer extends HttpServer
 {
-
     public function onRequest($request, $response): void
     {
         try {
@@ -31,21 +30,21 @@ class SwaggerHttpServer extends HttpServer
             }
 
             $path = $psr7Request->getUri()->getPath();
+            $extension = pathinfo($path, PATHINFO_EXTENSION);
             if ($path === $this->config['url']) {
                 $stream = new Stream($this->getHtml());
                 $contentType = 'text/html;charset=utf-8';
-            } elseif (str_ends_with($path, '.css')) {
-                $stream = new Stream($this->getMetadata($path));
-                $contentType = 'text/css';
-            } elseif (str_ends_with($path, '.svg')) {
-                $stream = new Stream($this->getMetadata($path));
-                $contentType = 'text/xml';
-            } elseif (str_ends_with($path, '.js')) {
-                $stream = new Stream($this->getMetadata($path));
-                $contentType = 'application/javascript';
             } else {
                 $stream = new Stream($this->getMetadata($path));
-                $contentType = 'application/json;charset=utf-8';
+                $contentType = match ($extension) {
+                    'css' => 'text/css',
+                    'jpg', 'jpeg' => $contentType = 'image/jpeg',
+                    'js' => 'application/javascript',
+                    'png' => 'image/png',
+                    'svg' => 'text/xml',
+                    'txt' => 'text/plain',
+                    default => 'application/json;charset=utf-8'
+                };
             }
 
             $psrResponse = (new Response())->setBody($stream)->setHeader('content-type', $contentType);
@@ -69,5 +68,4 @@ class SwaggerHttpServer extends HttpServer
 
         return is_file(__DIR__ . '/../../storage/swagger/index.html') ? file_get_contents(__DIR__ . '/../../storage/swagger/index.html') : '';
     }
-
 }

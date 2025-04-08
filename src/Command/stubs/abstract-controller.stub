@@ -17,8 +17,8 @@ use Hyperf\HttpServer\Contract\ResponseInterface;
 use Psr\Container\ContainerInterface;
 
 #[SA\Info(
-    version: '2.0',
-    description: 'HyperF OAuth2 and access control module',
+    version: '{{api_version}}',
+    description: '{{api_description}}',
     title: 'HF-Shield.',
     license: new SA\License(name: 'Private license')
 )]

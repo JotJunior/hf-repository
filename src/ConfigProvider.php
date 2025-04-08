@@ -48,9 +48,14 @@ class ConfigProvider
                 ],
             ],
             'listeners' => [
-                RequiredConfigListener::class,
             ],
             'publish' => [
+                [
+                    'id' => 'swagger-config',
+                    'description' => 'Swagger custom config.',
+                    'source' => __DIR__ . '/../publish/swagger.php',
+                    'destination' => BASE_PATH . '/config/autoload/swagger.php',
+                ],
                 [
                     'id' => 'swagger-ui',
                     'description' => 'Swagger custom template.',

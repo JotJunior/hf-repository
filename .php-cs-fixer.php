@@ -10,7 +10,8 @@ declare(strict_types=1);
  */
 
 $header = <<<'EOF'
-This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
+This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for
+manage controllers, entities and repositories.
 
 @author   Joao Zanon <jot@jot.com.br>
 @link     https://github.com/JotJunior/hf-repository
