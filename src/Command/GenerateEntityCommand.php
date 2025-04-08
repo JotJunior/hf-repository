@@ -14,7 +14,6 @@ namespace Jot\HfRepository\Command;
 use Hyperf\Command\Annotation\Command;
 use Jot\HfRepository\Exception\IndexNotFoundException;
 use Symfony\Component\Console\Input\InputOption;
-use function Hyperf\Translation\__;
 
 #[Command]
 class GenerateEntityCommand extends AbstractCommand

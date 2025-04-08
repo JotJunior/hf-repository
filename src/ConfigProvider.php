@@ -52,6 +52,12 @@ class ConfigProvider
             ],
             'publish' => [
                 [
+                    'id' => 'swagger-ui',
+                    'description' => 'Swagger custom template.',
+                    'source' => __DIR__ . '/../storage/swagger/docs',
+                    'destination' => BASE_PATH . '/storage/swagger/docs',
+                ],
+                [
                     'id' => 'translation-en',
                     'description' => 'The english translation messages for hf-repository.',
                     'source' => __DIR__ . '/../storage/languages/en/hf-repository.php',

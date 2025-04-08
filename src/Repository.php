@@ -77,17 +77,6 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
-     * Retrieves the index name derived from the class name.
-     * @return string the index name in snake_case format
-     */
-    protected function getIndexName(): string
-    {
-        $className = explode('\\', get_class($this));
-        $indexName = Str::plural(str_replace('Repository', '', end($className)));
-        return Str::snake($indexName);
-    }
-
-    /**
      * Magic method to handle serialization for coroutine scheduling.
      * Ensures that non-serializable properties are properly handled.
      */
@@ -196,18 +185,6 @@ abstract class Repository implements RepositoryInterface
         }
 
         return $createdEntity;
-    }
-
-    /**
-     * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity the entity to validate
-     * @throws EntityValidationWithErrorsException if validation fails
-     */
-    protected function validateEntity(EntityInterface $entity): void
-    {
-        if (! $entity->validate()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
     }
 
     /**
@@ -385,33 +362,6 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
-     * Invalidates cached search and paginate results in the current coroutine context.
-     * This is called after operations that modify data to ensure consistency.
-     */
-    protected function invalidateContextCache(): void
-    {
-        // Get all context keys for this coroutine
-        $contextKeys = Context::getContainer();
-
-        if (! is_array($contextKeys)) {
-            return;
-        }
-
-        // Find and remove search and paginate cache entries for this repository
-        $searchPrefix = self::CONTEXT_REPOSITORY . 'search.' . $this->index . '.';
-        $paginatePrefix = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.';
-        $firstPrefix = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.';
-
-        foreach ($contextKeys as $key => $value) {
-            if (str_starts_with($key, $searchPrefix)
-                || str_starts_with($key, $paginatePrefix)
-                || str_starts_with($key, $firstPrefix)) {
-                Context::set($key, null);
-            }
-        }
-    }
-
-    /**
      * Deletes a record identified by the given ID from the index.
      * Optimized for Swoole/Hyperf with coroutine safety.
      * @param string $id the unique identifier of the record to be deleted
@@ -445,5 +395,55 @@ abstract class Repository implements RepositoryInterface
         return $this->queryBuilder
             ->from($this->index)
             ->exists($id);
+    }
+
+    /**
+     * Retrieves the index name derived from the class name.
+     * @return string the index name in snake_case format
+     */
+    protected function getIndexName(): string
+    {
+        $className = explode('\\', get_class($this));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
+        return Str::snake($indexName);
+    }
+
+    /**
+     * Validates an entity and throws an exception if validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        if (! $entity->validate()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
+    }
+
+    /**
+     * Invalidates cached search and paginate results in the current coroutine context.
+     * This is called after operations that modify data to ensure consistency.
+     */
+    protected function invalidateContextCache(): void
+    {
+        // Get all context keys for this coroutine
+        $contextKeys = Context::getContainer();
+
+        if (! is_array($contextKeys)) {
+            return;
+        }
+
+        // Find and remove search and paginate cache entries for this repository
+        $searchPrefix = self::CONTEXT_REPOSITORY . 'search.' . $this->index . '.';
+        $paginatePrefix = self::CONTEXT_REPOSITORY . 'paginate.' . $this->index . '.';
+        $firstPrefix = self::CONTEXT_REPOSITORY . 'first.' . $this->index . '.';
+
+        foreach ($contextKeys as $key => $value) {
+            if (str_starts_with($key, $searchPrefix)
+                || str_starts_with($key, $paginatePrefix)
+                || str_starts_with($key, $firstPrefix)) {
+                Context::set($key, null);
+            }
+        }
     }
 }

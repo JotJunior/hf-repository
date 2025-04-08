@@ -19,6 +19,7 @@ use Hyperf\Stringable\Str;
 use Jot\HfElastic\ClientBuilder;
 use Jot\HfRepository\Exception\IndexNotFoundException;
 use Psr\Container\ContainerInterface;
+
 use function Hyperf\Translation\__;
 
 class AbstractCommand extends HyperfCommand
@@ -38,10 +39,11 @@ class AbstractCommand extends HyperfCommand
     protected string $moduleName;
 
     protected string $apiVersion;
+
     protected string $middlewareStrategy;
 
     public function __construct(
-        protected ContainerInterface       $container,
+        protected ContainerInterface $container,
         protected readonly ConfigInterface $config
     ) {
         parent::__construct($this->command);
@@ -74,7 +76,7 @@ class AbstractCommand extends HyperfCommand
         $namespace = sprintf('App\Controller\%s', ucfirst($apiVersion));
         $moduleName = $this->ask('Scope module name: ', $this->moduleName);
         $resourceName = $this->ask('Scope resource name: ', $schemaName);
-        $middlewareStrategy = match ($this->ask('Enable hf_shield protection? [bearer|session|public]', 'bearer')) {
+        $middlewareStrategy = match ($this->ask('Enable hf_shield protection? [bearer|session|public]', 'session')) {
             'bearer' => 'BearerStrategy::class',
             'session' => 'SessionStrategy::class',
             'signed_jwt' => 'SignedJwtStrategy::class',
@@ -99,6 +101,8 @@ class AbstractCommand extends HyperfCommand
         $controllerFile = sprintf('%s/%sController.php', $controllerDirectory, $className);
 
         $this->generateFile($controllerFile, $template);
+
+        $this->createAbstractController($apiVersion, $namespace);
     }
 
     /**
@@ -109,13 +113,13 @@ class AbstractCommand extends HyperfCommand
      */
     private function outputDir(string $path): string
     {
-        if (!defined('BASE_PATH')) {
+        if (! defined('BASE_PATH')) {
             define('BASE_PATH', \dirname(__DIR__, 4));
         }
 
         $outputDir = sprintf('%s%s', BASE_PATH, $path);
 
-        if (!is_dir($outputDir)) {
+        if (! is_dir($outputDir)) {
             @mkdir($outputDir, 0755, true);
         }
 
@@ -149,7 +153,7 @@ class AbstractCommand extends HyperfCommand
      */
     protected function generateFile(string $outputFile, string $contents): void
     {
-        if (file_exists($outputFile) && !$this->force) {
+        if (file_exists($outputFile) && ! $this->force) {
             $answer = $this->ask(sprintf('The file <fg=yellow>%s</> already exists. Overwrite file? [y/n/a]', $outputFile), 'n');
             if ($answer === 'a') {
                 $this->force = true;
@@ -161,6 +165,31 @@ class AbstractCommand extends HyperfCommand
 
         file_put_contents($outputFile, $contents);
         $this->success($outputFile);
+    }
+
+    /**
+     * Creates an abstract controller file for the specified API version and namespace.
+     *
+     * @param string $apiVersion the API version to associate with the abstract controller
+     * @param string $namespace the namespace to use for the abstract controller
+     */
+    protected function createAbstractController(string $apiVersion, string $namespace): void
+    {
+        $controllerDirectory = $this->outputDir(sprintf('/app/Controller/%s', ucfirst($apiVersion)));
+
+        $variables = [
+            'namespace' => $namespace,
+        ];
+
+        $template = $this->parseTemplate('abstract-controller', $variables);
+
+        $abstractControllerFile = sprintf('%s/AbstractController.php', $controllerDirectory);
+
+        if (!is_file($abstractControllerFile)) {
+            $this->generateFile($abstractControllerFile, $template);
+        }
+
+
     }
 
     protected function createService(string $indexName): void
@@ -235,7 +264,7 @@ class AbstractCommand extends HyperfCommand
                     $nestedClassName = ucfirst(Str::camel($fieldName));
                     $this->generateEntityFromMapping($details, $nestedClassName, $namespace, $outputDir, true);
                     $phpType = "\\{$namespace}\\{$nestedClassName}";
-                    $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $phpType)), 1);
+                    $docSchema = $this->generateSwaggerSchema(substr($phpType, 1));
                     $attributes .= "    #[SA\\Property(\n";
                     $attributes .= "        property: '{$fieldName}',\n";
                     $attributes .= "        ref: '#/components/schemas/{$docSchema}',\n";
@@ -249,7 +278,7 @@ class AbstractCommand extends HyperfCommand
                     $this->generateEntityFromMapping($details, $nestedClassName, $namespace, $outputDir, true);
                     $phpType = 'array';
                     $docType = "\\{$namespace}\\{$nestedClassName}[]";
-                    $docSchema = substr(strtolower(preg_replace('/\W+/', '.', $docType)), 1, -1);
+                    $docSchema = $this->generateSwaggerSchema(substr($docType, 1));
                     $attributes .= "    #[SA\\Property(\n";
                     $attributes .= "        property: '{$fieldName}',\n";
                     $attributes .= "        type: 'array',\n";
@@ -323,12 +352,12 @@ class AbstractCommand extends HyperfCommand
                 default:
                     $attributes .= "    #[SA\\Property(\n";
                     $attributes .= "        property: '{$fieldName}',\n";
-                    if (str_ends_with($fieldName, '_identifier')) {
+                    if (str_ends_with($fieldName, '_id')) {
                         $aliasField = explode('_', $fieldName)[0];
                         $attributes .= "        description: 'An alias of {$aliasField} id',\n";
                     }
                     $attributes .= "        type: 'string',\n";
-                    $attributes .= (in_array($fieldName, $readOnlyFields) || str_ends_with($fieldName, '_identifier')) ? "        readOnly: true,\n" : '';
+                    $attributes .= (in_array($fieldName, $readOnlyFields) || str_ends_with($fieldName, '_id')) ? "        readOnly: true,\n" : '';
                     $attributes .= "        example: ''\n";
                     $attributes .= "    )]\n";
                     break;
@@ -338,7 +367,7 @@ class AbstractCommand extends HyperfCommand
             $attributes .= "    protected null|{$phpType} \${$property} = null;\n\n";
         }
 
-        $schema = sprintf('%s.%s', str_replace('\\', '.', strtolower($namespace)), Str::snake($className));
+        $schema = $this->generateSwaggerSchema(sprintf('%s.%s', str_replace('\\', '.', $namespace), $className));
         $template = $this->parseTemplate('entity', ['class_name' => $className, 'schema' => $schema, 'attributes' => $attributes, 'namespace' => $namespace, 'traits' => $traits]);
         $fileName = sprintf('%s/%s.php', $outputDir, $className);
 
@@ -363,6 +392,19 @@ class AbstractCommand extends HyperfCommand
             'object' => 'object',
             default => 'string',
         };
+    }
+
+    /**
+     * Generates a Swagger-compatible schema name based on the provided namespace.
+     *
+     * @param string $namespace the namespace to transform into a Swagger schema name
+     * @return string the transformed schema name in a Swagger-compatible format
+     */
+    private function generateSwaggerSchema(string $namespace): string
+    {
+        $parts = explode('.', str_replace('\\', '.', $namespace));
+        $transform = array_map(fn ($part) => Str::snake($part), $parts);
+        return preg_replace('/[^a-z0-9_.-]/', '', implode('.', $transform));
     }
 
     /**
@@ -394,11 +436,11 @@ class AbstractCommand extends HyperfCommand
             return substr($indexName, strlen($this->indexPrefix) + 1);
         }
 
-        if ($this->indexPrefix && !str_starts_with($indexName, $this->indexPrefix) && !$removePrefix) {
+        if ($this->indexPrefix && ! str_starts_with($indexName, $this->indexPrefix) && ! $removePrefix) {
             return sprintf('%s_%s', $this->indexPrefix, $indexName);
         }
 
-        if (!$this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
+        if (! $this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
             throw new IndexNotFoundException(__('hf-repository.command.index_not_found', ['index' => $indexName]));
         }
 
@@ -422,7 +464,7 @@ class AbstractCommand extends HyperfCommand
         $outputDir = $this->outputDir('/app/Repository');
         $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
 
-        if (file_exists($repositoryFile) && !$this->force) {
+        if (file_exists($repositoryFile) && ! $this->force) {
             $this->warn('Repository class already exists at %s', [$repositoryFile]);
             return;
         }

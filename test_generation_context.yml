@@ -1,37 +1,38 @@
 project_settings:
   test_framework: "PHPUnit"
-  php_version: "8.2"
-  base_namespace: "Jot\\HfRepository\\"
+  php_version: ">=8.1"
+  base_namespace: "{composer_autoload_psr4}\\Test"
   source_dir: "src/"
   test_dir: "tests/"
-
 naming_conventions:
   test_class_suffix: "Test"
   test_method_prefix: "test"
   data_provider_prefix: "provide"
   test_file_pattern: "{Classname}Test.php"
-
-organization_rules:
-  directory_structure:
-    mirror_source: true
-    example:
-      source: "src/Domain/User/UserService.php"
-      test: "tests/Domain/User/UserServiceTest.php"
-
-  method_structure:
-    format: |
-      /**
-       * @test
-       * @group {group}
-       * @covers {class}::{method}
-       */
-      public function {testName}(): void
-      {
-          // Arrange
-          // Act
-          // Assert
-      }
-
+method_structure:
+  format: |
+    #[Test]
+    #[Group('unit')]
+    public function {testName}(): void
+    {
+        // Arrange
+        // Act
+        // Assert
+    }
+docblock_rules:
+  required_sections:
+    - "What is being tested"
+    - "Conditions/Scenarios"
+    - "Expected results"
+  docblock_template: |
+    /**
+      * What is being tested:
+      * - {what_is_tested_topics}
+      * Conditions/Scenarios:
+      * - {conditions_scenarios_topics}
+      * Expected results:
+      * - {expected_results_topics}
+      */
 mocking_rules:
   framework: "PHPUnit"
   preferred_method: "createMock"
@@ -46,49 +47,24 @@ mocking_rules:
   stub_conventions:
     data_providers: true
     fake_data_generation: "Faker\\Factory"
-    datetime_format: "Y-m-d H:i:s"
-
+    datetime_format: "Y-m-d\TH:i:s.u"
 assertion_rules:
   exception_testing:
     required: true
     pattern: |
       $this->expectException({ExceptionClass}::class);
       $this->expectExceptionMessage('{message}');
-
   collection_testing:
     count_assertion: true
     type_assertion: true
     content_assertion: true
-
-documentation_rules:
-  required_sections:
-    - "What is being tested"
-    - "Conditions/Scenarios"
-    - "Expected results"
-
-  docblock_template: |
-    /**
-     * @test
-     * @covers {class}::{method}
-     * @group {group}
-     * @dataProvider {dataProviderName}
-     *
-     * Test that {description}
-     *
-     * @param {parameterType} $parameter
-     * @return void
-     */
-
 test_groups:
   - unit
   - integration
   - feature
   - slow
   - critical
-
-coverage_requirements:
-  minimum_coverage: 80
-
+minimum_coverage: 80
 validation_rules:
   forbidden_practices:
     - "sleep()"
@@ -97,7 +73,6 @@ validation_rules:
   required_assertions: true
   max_method_length: 50
   max_test_complexity: 5
-
 templates:
   basic_test: |
     <?php
@@ -107,11 +82,13 @@ templates:
     namespace {namespace};
     
     use PHPUnit\Framework\TestCase;
+    use PHPUnit\Framework\Attributes\CoversClass;
+    use PHPUnit\Framework\Attributes\Group;
+    use PHPUnit\Framework\Attributes\Test;
+    use PHPUnit\Framework\TestCase;
     use {tested_class_namespace}\{tested_class};
     
-    /**
-     * @covers \{tested_class_namespace}\{tested_class}
-     */
+    #[CoversClass({tested_class})]
     class {test_class_name} extends TestCase
     {
         private {tested_class} $sut;
@@ -120,11 +97,13 @@ templates:
         {
             parent::setUp();
             $this->sut = new {tested_class}();
+            // Any other required dependencies
         }
+    
     }
-
   data_provider: |
     /**
+     * {scenario_description}
      * @return array<string, array<mixed>>
      */
     public function provide{scenarioName}(): array
@@ -136,19 +115,3 @@ templates:
             ],
         ];
     }
-
-common_snippets:
-  mock_repository: |
-    $repository = $this->createMock({RepositoryInterface}::class);
-    $repository
-        ->method('{method}')
-        ->with({parameters})
-        ->willReturn({return_value});
-
-  assertion_collection: |
-    $this->assertCount({expected_count}, $result);
-    $this->assertContainsOnlyInstancesOf({expected_class}::class, $result);
-
-  exception_test: |
-    $this->expectException({ExceptionClass}::class);
-    $this->expectExceptionMessage('{message}');

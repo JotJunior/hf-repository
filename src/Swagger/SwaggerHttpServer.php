@@ -11,49 +11,63 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Swagger;
 
+use Hyperf\Engine\Http\Stream;
+use Hyperf\HttpMessage\Server\Request as Psr7Request;
+use Hyperf\HttpMessage\Server\Response;
 use Hyperf\Swagger\HttpServer;
+use Psr\Http\Message\ServerRequestInterface;
+use Throwable;
 
 class SwaggerHttpServer extends HttpServer
 {
+
+    public function onRequest($request, $response): void
+    {
+        try {
+            if ($request instanceof ServerRequestInterface) {
+                $psr7Request = $request;
+            } else {
+                $psr7Request = Psr7Request::loadFromSwooleRequest($request);
+            }
+
+            $path = $psr7Request->getUri()->getPath();
+            if ($path === $this->config['url']) {
+                $stream = new Stream($this->getHtml());
+                $contentType = 'text/html;charset=utf-8';
+            } elseif (str_ends_with($path, '.css')) {
+                $stream = new Stream($this->getMetadata($path));
+                $contentType = 'text/css';
+            } elseif (str_ends_with($path, '.svg')) {
+                $stream = new Stream($this->getMetadata($path));
+                $contentType = 'text/xml';
+            } elseif (str_ends_with($path, '.js')) {
+                $stream = new Stream($this->getMetadata($path));
+                $contentType = 'application/javascript';
+            } else {
+                $stream = new Stream($this->getMetadata($path));
+                $contentType = 'application/json;charset=utf-8';
+            }
+
+            $psrResponse = (new Response())->setBody($stream)->setHeader('content-type', $contentType);
+
+            $this->emitter->emit($psrResponse, $response);
+        } catch (Throwable) {
+            $this->emitter->emit(
+                (new Response())
+                    ->setBody(new Stream('Server Error'))
+                    ->setHeader('content-type', 'text/html;charset=utf-8'),
+                $response
+            );
+        }
+    }
+
     protected function getHtml(): string
     {
         if (! empty($this->config['html'])) {
             return $this->config['html'];
         }
 
-        return <<<'HTML'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="SwaggerUI" />
-  <title>SwaggerUI</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
-</head>
-<body>
-<div id="swagger-ui"></div>
-<script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
-<script>
-  window.onload = () => {
-    window.ui = SwaggerUIBundle({
-      url: GetQueryString("search"),
-      dom_id: '#swagger-ui',
-    });
-  };
-  function GetQueryString(name) {
-        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
-        var r = window.location.search.substr(1).match(reg); //获取url中"?"符后的字符串并正则匹配
-        var context = "";
-        if (r != null)
-            context = decodeURIComponent(r[2]);
-        reg = null;
-        r = null;
-        return context == null || context == "" || context == "undefined" ? "/http.json" : context;
+        return is_file(__DIR__ . '/../../storage/swagger/index.html') ? file_get_contents(__DIR__ . '/../../storage/swagger/index.html') : '';
     }
-</script>
-</body>
-</html>
-HTML;
-    }
+
 }

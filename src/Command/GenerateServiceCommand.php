@@ -42,7 +42,6 @@ class GenerateServiceCommand extends AbstractCommand
 
         $this->force = $this->input->getOption('force');
 
-
         $this->createService($indexName);
     }
 }

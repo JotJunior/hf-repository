@@ -11,7 +11,6 @@ declare(strict_types=1);
 
 namespace {{namespace}};
 
-use App\Controller\AbstractController;
 use App\Entity\{{class_name}}\{{class_name}};
 use App\Service\{{class_name}}Service;
 use Hyperf\Di\Annotation\Inject;
@@ -38,49 +37,54 @@ use function Hyperf\Support\make;
     schema: '{{module_name}}.error.response',
     required: ['result', 'error'],
     properties: [
-        new SA\Property(property: 'result', description: 'Request result (success|error)', type: 'string', example: 'error'),
-        new SA\Property(property: 'error', description: 'Friendly error message', type: 'string', example: 'Error message'),
-        new SA\Property(property: 'data', description: 'Json content response', type: 'string|array', example: null),
+        new SA\Property(property: 'result', description: self::DESCRIPTION_RESPONSE_ERROR_RESULT, type: 'string', example: 'error'),
+        new SA\Property(property: 'error', description: self::DESCRIPTION_RESPONSE_ERROR_MESSAGE, type: 'string', example: 'Error message'),
+        new SA\Property(property: 'data', description: self::DESCRIPTION_RESPONSE_ERROR_JSON, type: 'string|array', example: null),
     ],
     type: 'object'
 )]
 #[Controller(prefix: '/{{api_version}}')]
 class {{class_name}}Controller extends AbstractController
 {
+    private const REQUEST_PATH = '/{{api_version}}/{{module_name}}/{{service_name}}';
+    private const REQUEST_PATH_ID = '/{{api_version}}/{{module_name}}/{{service_name}}/{id}';
+    private const RESPONSE_SCHEMA_CONTENT = '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}';
+    private const RESPONSE_SCHEMA_ERROR = '#/components/schemas/{{module_name}}.error.response';
+
     #[Inject]
     protected {{class_name}}Service $service;
 
     #[SA\Get(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}',
+        path: self::REQUEST_PATH,
         description: 'Retrieve a list of {{service_name}} with optional pagination and filters.',
         summary: 'Get {{class_name}}s List',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:list']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
-                name: '_page',
-                description: 'Page number for pagination',
+                name: self::QUERY_PAGE_NUMBER,
+                description: self::DESCRIPTION_PAGE_NUMBER,
                 in: 'query',
                 required: false,
                 schema: new SA\Schema(type: 'integer', example: 1)
             ),
             new SA\Parameter(
-                name: '_per_page',
-                description: 'Number of results per page',
+                name: self::QUERY_RESULTS_PER_PAGE,
+                description: self::DESCRIPTION_PAGE_RESULTS_PER_PAGE,
                 in: 'query',
                 required: false,
                 schema: new SA\Schema(type: 'integer', example: 10)
             ),
             new SA\Parameter(
-                name: '_sort',
-                description: 'Sort results by a specific fields',
+                name: self::QUERY_SORT,
+                description: self::DESCRIPTION_PAGE_RESULTS_SORT,
                 in: 'query',
                 required: false,
                 schema: new SA\Schema(type: 'string', example: 'created_at:desc,updated_at:desc')
             ),
             new SA\Parameter(
-                name: '_fields',
-                description: 'Fields to include in the response',
+                name: self::QUERY_RESULT_FIELDS,
+                description: self::DESCRIPTION_PAGE_RESULTS_FIELDS,
                 in: 'query',
                 required: false,
                 schema: new SA\Schema(type: 'string', example: 'id,created_at,updated_at')
@@ -95,7 +99,7 @@ class {{class_name}}Controller extends AbstractController
                         new SA\Property(
                             property: 'data',
                             type: 'array',
-                            items: new SA\Items(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
+                            items: new SA\Items(ref: self::RESPONSE_SCHEMA_CONTENT)
                         ),
                         new SA\Property(
                             property: 'result',
@@ -114,23 +118,23 @@ class {{class_name}}Controller extends AbstractController
             ),
             new SA\Response(
                 response: 400,
-                description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 500,
-                description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
@@ -150,7 +154,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Get(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
+        path: self::REQUEST_PATH_ID,
         description: 'Retrieve the details of a specific {{service_name}} identified by ID.',
         summary: 'Get {{class_name}} Data',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:view']]],
@@ -158,10 +162,10 @@ class {{class_name}}Controller extends AbstractController
         parameters: [
             new SA\Parameter(
                 name: 'id',
-                description: 'Unique identifier of the {{service_name}}',
+                description: self::DESCRIPTION_PARAMETER_ID,
                 in: 'path',
                 required: true,
-                schema: new SA\Schema(type: 'string', example: '12345')
+                schema: new SA\Schema(type: 'string', example: self::EXAMPLE_PARAMETER_ID)
             ),
         ],
         responses: [
@@ -172,7 +176,7 @@ class {{class_name}}Controller extends AbstractController
                     properties: [
                         new SA\Property(
                             property: 'data',
-                            ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}'
+                            ref: self::RESPONSE_SCHEMA_CONTENT
                         ),
                         new SA\Property(
                             property: 'result',
@@ -191,28 +195,28 @@ class {{class_name}}Controller extends AbstractController
             ),
             new SA\Response(
                 response: 400,
-                description: 'Server Error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 500,
-                description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
@@ -235,40 +239,40 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Post(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}',
+        path: self::REQUEST_PATH,
         description: 'Create a new {{service_name}}.',
         summary: 'Create a New {{class_name}}',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:create']]],
         requestBody: new SA\RequestBody(
             required: true,
-            content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
+            content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
         ),
         tags: ['{{class_name}}'],
         responses: [
             new SA\Response(
                 response: 201,
                 description: '{{class_name}} created',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
-            ),
-            new SA\Response(
-                response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
-            ),
-            new SA\Response(
-                response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
             ),
             new SA\Response(
                 response: 400,
-                description: 'Bad request',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 500,
-                description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
@@ -282,19 +286,19 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Put(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
+        path: self::REQUEST_PATH_ID,
         description: 'Update the details of an existing {{service_name}}.',
         summary: 'Update an existing {{class_name}}',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:update']]],
         requestBody: new SA\RequestBody(
             required: true,
-            content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
+            content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
         ),
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
                 name: 'id',
-                description: 'Unique identifier of the {{service_name}}',
+                description: self::DESCRIPTION_PARAMETER_ID,
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: '12345')
@@ -304,32 +308,32 @@ class {{class_name}}Controller extends AbstractController
             new SA\Response(
                 response: 200,
                 description: '{{class_name}} Updated',
-                content: new SA\JsonContent(ref: '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}')
-            ),
-            new SA\Response(
-                response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
-            ),
-            new SA\Response(
-                response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
             ),
             new SA\Response(
                 response: 400,
-                description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} Not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 500,
-                description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
@@ -343,7 +347,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Delete(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
+        path: self::REQUEST_PATH_ID,
         description: 'Delete an existing {{service_name}} by its unique identifier.',
         summary: 'Delete an existing {{class_name}}',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:delete']]],
@@ -351,7 +355,7 @@ class {{class_name}}Controller extends AbstractController
         parameters: [
             new SA\Parameter(
                 name: 'id',
-                description: 'Unique identifier of the {{service_name}}',
+                description: self::DESCRIPTION_PARAMETER_ID,
                 in: 'path',
                 required: true,
                 schema: new SA\Schema(type: 'string', example: '12345')
@@ -385,28 +389,28 @@ class {{class_name}}Controller extends AbstractController
             ),
             new SA\Response(
                 response: 400,
-                description: 'Bad Request',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} Not Found',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 500,
-                description: 'Application error',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
@@ -420,7 +424,7 @@ class {{class_name}}Controller extends AbstractController
     }
 
     #[SA\Head(
-        path: '/{{api_version}}/{{module_name}}/{{service_name}}/{id}',
+        path: self::REQUEST_PATH_ID,
         description: 'Check if a valid {{service_name}} exists by its unique identifier.',
         summary: 'Check {{service_name}}',
         security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:verify']]],
@@ -441,19 +445,29 @@ class {{class_name}}Controller extends AbstractController
                 content: null
             ),
             new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
                 response: 401,
-                description: 'Unauthorized access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 403,
-                description: 'Forbidden access',
-                content: new SA\JsonContent(ref: '#/components/schemas/{{module_name}}.error.response')
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
             new SA\Response(
                 response: 404,
                 description: '{{class_name}} not Found',
                 content: null
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
             ),
         ]
     )]
