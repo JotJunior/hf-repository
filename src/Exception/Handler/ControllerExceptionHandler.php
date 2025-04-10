@@ -95,8 +95,8 @@ class ControllerExceptionHandler extends ExceptionHandler
     {
         if (count($errors) > 1) {
             return __('hf-repository.validation_error_with_count', [
-                current($errors)[0],
-                count($errors) - 1,
+                'error' => current($errors)[0],
+                'count' => count($errors) - 1,
             ]);
         }
 

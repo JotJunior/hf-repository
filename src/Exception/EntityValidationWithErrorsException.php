@@ -15,6 +15,8 @@ namespace Jot\HfRepository\Exception;
 use Exception;
 use Throwable;
 
+use function Hyperf\Translation\__;
+
 class EntityValidationWithErrorsException extends Exception
 {
     protected array $errors;

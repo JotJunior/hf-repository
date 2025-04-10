@@ -19,7 +19,7 @@ return [
     'failed_update_entity' => 'Failed to update entity',
 
     // Validation messages
-    'validation_error_with_count' => '{0} (and {1} more errors)',
+    'validation_error_with_count' => ':error (and :count more errors)',
 
     // Rate limiting
     'too_many_requests' => 'Too Many Requests.',

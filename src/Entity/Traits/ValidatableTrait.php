@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Entity\Traits;
 
+use Jot\HfValidator\ValidatorChain;
 use Jot\HfValidator\ValidatorInterface;
 
 /**
@@ -48,16 +49,21 @@ trait ValidatableTrait
     public function validate(): bool
     {
         $this->errors = [];
+        $this->validators = array_merge($this->validators, ValidatorChain::list(get_class($this)));
 
-        // First validate the validators added directly to the entity
+        $validated = [];
+
         foreach ($this->validators as $property => $validators) {
+            if (!empty($validated[$property])) {
+                continue;
+            }
             foreach ($validators as $validator) {
                 $isValid = $validator->validate($this->{$property});
-
                 if (! $isValid) {
                     $this->errors[$property] = $validator->consumeErrors();
                 }
             }
+            $validated[$property] = true;
         }
 
         return empty($this->errors);

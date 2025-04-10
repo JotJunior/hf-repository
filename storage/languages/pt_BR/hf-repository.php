@@ -19,7 +19,7 @@ return [
     'failed_update_entity' => 'Falha ao atualizar entidade',
 
     // Validation messages
-    'validation_error_with_count' => '{0} (e mais {1} erros)',
+    'validation_error_with_count' => ':error (e mais :count erros)',
 
     // Rate limiting
     'too_many_requests' => 'Muitas requisições.',
