@@ -18,6 +18,7 @@ use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\RateLimit\Exception\RateLimitException;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
+use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
@@ -34,7 +35,7 @@ class ControllerExceptionHandler extends ExceptionHandler
             'status' => 400,
             'handler' => 'handleValidationException',
         ],
-        RepositoryCreateException::class => [
+        RepositoryCreateException::class, RepositoryUpdateException::class => [
             'status' => 400,
             'handler' => 'handleRepositoryException',
         ],

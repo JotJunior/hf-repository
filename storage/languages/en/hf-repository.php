@@ -45,5 +45,13 @@ return [
         'crud_description' => 'Creates a complete crud controller for a given Elasticsearch index.',
         'entity_description' => 'Creating entity classes based on the elasticsearch mapping configuration.',
         'repository_description' => 'Create a repository class.',
+
+        // Controller creation commands
+        'unable_create_before' => 'Before creating the controller, you must create the <fg=cyan>entities</>, <fg=cyan>repository</> and <fg=cyan>service</>.',
+        'enable_shield_strategy' => 'Choose the hf_shield validation strategy [bearer|session|public]',
+        'api_version' => 'API Version:',
+        'scope_module_name' => 'Scope module name:',
+        'scope_resource_name' => 'Scope resource name:',
+
     ],
 ];

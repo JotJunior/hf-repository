@@ -76,11 +76,20 @@ class AbstractCommand extends HyperfCommand
         $serviceName = Str::snake($indexName);
         $schemaName = Str::singular($serviceName);
         $className = ucfirst(Str::camel($schemaName));
-        $apiVersion = $this->ask('API  version: ', $this->apiVersion);
+
+        $entityFile = $this->outputDir(sprintf('/app/Entity/%s/%s.php', $className, $className));
+        $repositoryFile = $this->outputDir(sprintf('/app/Repository/%sRepository.php', $className));
+        $serviceFile = $this->outputDir(sprintf('/app/Service/%sService.php', $className));
+        if (!is_file($entityFile) || !is_file($repositoryFile) || !is_file($serviceFile)) {
+            $this->failed(__('hf-repository.command.unable_create_before'));
+            exit(1);
+        }
+
+        $apiVersion = $this->ask(__('hf-repository.command.api_version'), $this->apiVersion);
         $namespace = sprintf('App\Controller\%s', ucfirst($apiVersion));
-        $moduleName = $this->ask('Scope module name: ', $this->moduleName);
-        $resourceName = $this->ask('Scope resource name: ', $schemaName);
-        $middlewareStrategy = match ($this->ask('Enable hf_shield protection? [bearer|session|public]', 'session')) {
+        $moduleName = $this->ask(__('hf-repository.command.scope_module_name'), $this->moduleName);
+        $resourceName = $this->ask(__('hf-repository.command.scope_resource_name'), $schemaName);
+        $middlewareStrategy = match ($this->ask(__('hf-repository.command.enable_shield_strategy'), 'session')) {
             'bearer' => 'BearerStrategy::class',
             'session' => 'SessionStrategy::class',
             'signed_jwt' => 'SignedJwtStrategy::class',
@@ -107,6 +116,45 @@ class AbstractCommand extends HyperfCommand
         $this->generateFile($controllerFile, $template);
 
         $this->createAbstractController($namespace);
+    }
+
+    /**
+     * Ensures the existence of the specified output directory by creating it if necessary.
+     *
+     * @param string $path the relative path to the desired output directory
+     * @return string the absolute path to the created or existing output directory
+     */
+    private function outputDir(string $path): string
+    {
+        if (! defined('BASE_PATH')) {
+            define('BASE_PATH', \dirname(__DIR__, 4));
+        }
+
+        $outputDir = sprintf('%s%s', BASE_PATH, $path);
+
+        if (! is_dir($outputDir)) {
+            @mkdir($outputDir, 0755, true);
+        }
+
+        return $outputDir;
+    }
+
+    /**
+     * Creates a template by replacing placeholders within a template file with provided variables.
+     *
+     * @param string $name the name of the template file (without extension) to be processed
+     * @param array $variables an associative array of placeholders and their replacement values
+     *
+     * @return string the processed template with placeholders replaced by their corresponding values
+     */
+    private function parseTemplate(string $name, array $variables): string
+    {
+        $template = file_get_contents(sprintf('%s/stubs/%s.stub', __DIR__, $name));
+        array_walk($variables, function ($value, $key) use (&$template) {
+            $template = str_replace('{{' . $key . '}}', $value, $template);
+        });
+
+        return $template;
     }
 
     /**
@@ -186,92 +234,6 @@ class AbstractCommand extends HyperfCommand
         $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
 
         $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
-    }
-
-    protected function getIndexName(bool $removePrefix = true): string
-    {
-        $indexName = $this->input->getOption('index');
-        if (empty($indexName)) {
-            $indexName = $this->ask('Please enter the elasticsearch index name:');
-        }
-
-        if ($this->indexPrefix && str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
-            return substr($indexName, strlen($this->indexPrefix) + 1);
-        }
-
-        if ($this->indexPrefix && ! str_starts_with($indexName, $this->indexPrefix) && ! $removePrefix) {
-            return sprintf('%s_%s', $this->indexPrefix, $indexName);
-        }
-
-        if (! $this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
-            throw new IndexNotFoundException(__('hf-repository.command.index_not_found', ['index' => $indexName]));
-        }
-
-        return $indexName;
-    }
-
-    /**
-     * Creates a repository class file for the specified index name.
-     *
-     * @param string $indexName the name of the index to create the repository for
-     */
-    protected function createRepository(string $indexName): void
-    {
-        $namespace = 'App\Repository';
-        $serviceName = Str::snake($indexName);
-        $schemaName = Str::singular($serviceName);
-        $className = ucfirst(Str::camel($schemaName));
-        $entity = str_replace('Repository', '', sprintf('App\Entity\%s\%s', $className, $className));
-
-        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
-        $outputDir = $this->outputDir('/app/Repository');
-        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
-
-        if (file_exists($repositoryFile) && ! $this->force) {
-            $this->warn('Repository class already exists at %s', [$repositoryFile]);
-            return;
-        }
-
-        $this->generateFile($repositoryFile, $template);
-    }
-
-    /**
-     * Ensures the existence of the specified output directory by creating it if necessary.
-     *
-     * @param string $path the relative path to the desired output directory
-     * @return string the absolute path to the created or existing output directory
-     */
-    private function outputDir(string $path): string
-    {
-        if (! defined('BASE_PATH')) {
-            define('BASE_PATH', \dirname(__DIR__, 4));
-        }
-
-        $outputDir = sprintf('%s%s', BASE_PATH, $path);
-
-        if (! is_dir($outputDir)) {
-            @mkdir($outputDir, 0755, true);
-        }
-
-        return $outputDir;
-    }
-
-    /**
-     * Creates a template by replacing placeholders within a template file with provided variables.
-     *
-     * @param string $name the name of the template file (without extension) to be processed
-     * @param array $variables an associative array of placeholders and their replacement values
-     *
-     * @return string the processed template with placeholders replaced by their corresponding values
-     */
-    private function parseTemplate(string $name, array $variables): string
-    {
-        $template = file_get_contents(sprintf('%s/stubs/%s.stub', __DIR__, $name));
-        array_walk($variables, function ($value, $key) use (&$template) {
-            $template = str_replace('{{' . $key . '}}', $value, $template);
-        });
-
-        return $template;
     }
 
     /**
@@ -473,5 +435,52 @@ class AbstractCommand extends HyperfCommand
             $this->failed($e->getMessage());
             return null;
         }
+    }
+
+    protected function getIndexName(bool $removePrefix = true): string
+    {
+        $indexName = $this->input->getOption('index');
+        if (empty($indexName)) {
+            $indexName = $this->ask('Please enter the elasticsearch index name:');
+        }
+
+        if ($this->indexPrefix && str_starts_with($indexName, $this->indexPrefix) && $removePrefix) {
+            return substr($indexName, strlen($this->indexPrefix) + 1);
+        }
+
+        if ($this->indexPrefix && ! str_starts_with($indexName, $this->indexPrefix) && ! $removePrefix) {
+            return sprintf('%s_%s', $this->indexPrefix, $indexName);
+        }
+
+        if (! $this->esClient->indices()->exists(['index' => sprintf('%s_%s', $this->indexPrefix, $indexName)])) {
+            throw new IndexNotFoundException(__('hf-repository.command.index_not_found', ['index' => $indexName]));
+        }
+
+        return $indexName;
+    }
+
+    /**
+     * Creates a repository class file for the specified index name.
+     *
+     * @param string $indexName the name of the index to create the repository for
+     */
+    protected function createRepository(string $indexName): void
+    {
+        $namespace = 'App\Repository';
+        $serviceName = Str::snake($indexName);
+        $schemaName = Str::singular($serviceName);
+        $className = ucfirst(Str::camel($schemaName));
+        $entity = str_replace('Repository', '', sprintf('App\Entity\%s\%s', $className, $className));
+
+        $template = $this->parseTemplate('repository', ['entity' => $entity, 'namespace' => $namespace, 'class_name' => $className]);
+        $outputDir = $this->outputDir('/app/Repository');
+        $repositoryFile = sprintf('%s/%sRepository.php', $outputDir, $className);
+
+        if (file_exists($repositoryFile) && ! $this->force) {
+            $this->warn('Repository class already exists at %s', [$repositoryFile]);
+            return;
+        }
+
+        $this->generateFile($repositoryFile, $template);
     }
 }

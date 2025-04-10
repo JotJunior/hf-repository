@@ -31,6 +31,7 @@ trait PropertyVisibilityTrait
         'hidden_properties',
         'logger',
         'validators',
+        'return_mode',
     ];
 
     /**

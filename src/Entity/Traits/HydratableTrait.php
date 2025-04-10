@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 /**
- * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for
- * manage controllers, entities and repositories.
+ * This file is part of Gekom APIv2.
  *
- * @author   Joao Zanon <jot@jot.com.br>
- * @link     https://github.com/JotJunior/hf-repository
- * @license  MIT
+ * @document https://github.com/JotJunior/gekom
+ * @author   Joao Zanon <jot@jot.con.br>
+ * @link     https://gekom.com.br
+ * @license  Private
  */
 
 namespace Jot\HfRepository\Entity\Traits;
@@ -33,6 +33,20 @@ use Throwable;
  */
 trait HydratableTrait
 {
+    protected string $returnMode = 'snake';
+
+    public function asCamel(): self
+    {
+        $this->returnMode = 'camel';
+        return $this;
+    }
+
+    public function asSnake(): self
+    {
+        $this->returnMode = 'snake';
+        return $this;
+    }
+
     /**
      * Populates the current object with data from the provided array.
      * @param array $data an associative array where keys correspond to property names and values are the values to be assigned
@@ -92,7 +106,7 @@ trait HydratableTrait
                 continue;
             }
 
-            $array[Str::snake($propertyName)] = $this->extractVariables($value, $params);
+            $array[Str::{$this->returnMode}($propertyName)] = $this->extractVariables($value, $params);
         }
 
         return array_filter($array);

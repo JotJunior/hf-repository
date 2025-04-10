@@ -45,5 +45,13 @@ return [
         'crud_description' => 'Cria um controlador CRUD completo para um determinado índice Elasticsearch.',
         'entity_description' => 'Cria classes de entidade baseadas na configuração de mapeamento do elasticsearch.',
         'repository_description' => 'Cria uma classe de repositório.',
+
+        // Controller creation commands
+        'unable_create_before' => 'Antes de criar o controlador, você deve criar as <fg=cyan>entidades</>, <fg=cyan>repositório</> e <fg=cyan>serviço</>.',
+        'enable_shield_strategy' => 'Escolha a estratégia de validação do hf_shield [bearer|session|public]',
+        'api_version' => 'API Version:',
+        'scope_module_name' => 'Scope module name:',
+        'scope_resource_name' => 'Scope resource name:',
+
     ],
 ];
