@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 /**
- * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for
- * manage controllers, entities and repositories.
+ * This file is part of Gekom APIv2.
  *
- * @author   Joao Zanon <jot@jot.com.br>
- * @link     https://github.com/JotJunior/hf-repository
- * @license  MIT
+ * @document https://github.com/JotJunior/gekom
+ * @author   Joao Zanon <jot@jot.con.br>
+ * @link     https://gekom.com.br
+ * @license  Private
  */
 
 namespace Jot\HfRepository;
@@ -41,7 +41,6 @@ use function Hyperf\Translation\__;
  */
 abstract class Repository implements RepositoryInterface
 {
-
     /**
      * @Inject
      */
@@ -69,17 +68,6 @@ abstract class Repository implements RepositoryInterface
     public function __construct()
     {
         $this->index = $this->getIndexName();
-    }
-
-    /**
-     * Retrieves the index name derived from the class name.
-     * @return string the index name in snake_case format
-     */
-    protected function getIndexName(): string
-    {
-        $className = explode('\\', get_class($this));
-        $indexName = Str::plural(str_replace('Repository', '', end($className)));
-        return Str::snake($indexName);
     }
 
     /**
@@ -172,18 +160,6 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
-     * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity the entity to validate
-     * @throws EntityValidationWithErrorsException if validation fails
-     */
-    protected function validateEntity(EntityInterface $entity): void
-    {
-        if ($entity->getErrors()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
-    }
-
-    /**
      * Retrieves and hydrates the first entity matching the provided parameters.
      * @param array $params an associative array of query parameters used to filter the entities
      * @return null|EntityInterface the hydrated entity instance corresponding to the first match
@@ -210,23 +186,20 @@ abstract class Repository implements RepositoryInterface
      */
     public function search(array $params): array
     {
-
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+
         $result = $query->execute();
 
         if (empty($result['data'])) {
             return [];
         }
 
-        $entities = array_map(
+        return array_map(
             function ($item) {
-                $entity = $this->entityFactory->create($this->entity, $item);
-                return $entity;
+                return $this->entityFactory->create($this->entity, $item);
             },
             $result['data']
         );
-
-        return $entities;
     }
 
     /**
@@ -296,7 +269,6 @@ abstract class Repository implements RepositoryInterface
         return $this->entityFactory->create($this->entity, $result['data']);
     }
 
-
     /**
      * Deletes a record identified by the given ID from the index.
      * @param string $id the unique identifier of the record to be deleted
@@ -318,5 +290,28 @@ abstract class Repository implements RepositoryInterface
         return $this->queryBuilder
             ->from($this->index)
             ->exists($id);
+    }
+
+    /**
+     * Retrieves the index name derived from the class name.
+     * @return string the index name in snake_case format
+     */
+    protected function getIndexName(): string
+    {
+        $className = explode('\\', get_class($this));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
+        return Str::snake($indexName);
+    }
+
+    /**
+     * Validates an entity and throws an exception if validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        if ($entity->getErrors()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
     }
 }

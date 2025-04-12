@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 /**
- * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for
- * manage controllers, entities and repositories.
+ * This file is part of Gekom APIv2.
  *
- * @author   Joao Zanon <jot@jot.com.br>
- * @link     https://github.com/JotJunior/hf-repository
- * @license  MIT
+ * @document https://github.com/JotJunior/gekom
+ * @author   Joao Zanon <jot@jot.con.br>
+ * @link     https://gekom.com.br
+ * @license  Private
  */
 
 namespace Jot\HfRepository\Query;
@@ -36,6 +36,10 @@ class QueryParser implements QueryParserInterface
     {
         // Select fields
         $queryBuilder->select(explode(',', $params['_fields'] ?? '*'));
+
+        if (! empty($params['_per_page'])) {
+            $queryBuilder->limit((int)$params['_per_page']);
+        }
 
         // Apply sorting
         if (! empty($params['_sort'])) {

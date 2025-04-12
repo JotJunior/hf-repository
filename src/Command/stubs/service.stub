@@ -15,15 +15,23 @@ use App\Entity\{{class_name}}\{{class_name}} as Entity;
 use App\Repository\{{class_name}}Repository;
 use Hyperf\Cache\Annotation\Cacheable;
 use Hyperf\Cache\Annotation\CacheEvict;
-use Hyperf\Cache\Annotation\CachePut;
+use Hyperf\Cache\Listener\DeleteListenerEvent;
 use Hyperf\Di\Annotation\Inject;
+use Psr\EventDispatcher\EventDispatcherInterface;use Hyperf\Cache\Annotation\CachePut;
 
 use function Hyperf\Support\make;
 
 class {{class_name}}Service
 {
+
+    private const CACHE_PREFIX = '{{cache_prefix}}';
+
     #[Inject]
     protected {{class_name}}Repository $repository;
+
+    #[Inject]
+    protected EventDispatcherInterface $dispatcher;
+
     protected Entity $entity;
 
     public function paginate(array $query): array
@@ -31,7 +39,7 @@ class {{class_name}}Service
         return $this->repository->paginate($query);
     }
 
-    #[Cacheable(prefix: '{{cache_prefix}}', ttl: 600)]
+    #[Cacheable(prefix: self::CACHE_PREFIX, ttl: 600, listener: self::CACHE_PREFIX)]
     public function getData(string $id): array
     {
         $entity = $this->repository->find($id);
@@ -43,7 +51,6 @@ class {{class_name}}Service
         ];
     }
 
-    #[CachePut(prefix: '{{cache_prefix}}', ttl: 600)]
     public function create(array $data): array
     {
         $entity = make(Entity::class, ['data' => $data]);
@@ -56,11 +63,12 @@ class {{class_name}}Service
         ];
     }
 
-    #[CachePut(prefix: '{{cache_prefix}}', ttl: 600)]
     public function update(string $id, array $data): array
     {
-        $entity = make(Entity::class, ['id' => $id, ...$data]);
+        $entity = make(Entity::class, ['data' => ['id' => $id, ...$data]]);
         $result = $this->repository->update($entity);
+
+        $this->dispatcher->dispatch(new DeleteListenerEvent(self::CACHE_PREFIX, [$id]));
 
         return [
             'data' => $result->toArray(),
@@ -69,9 +77,10 @@ class {{class_name}}Service
         ];
     }
 
-    #[CacheEvict(prefix: '{{cache_prefix}}')]
     public function delete(string $id): array
     {
+        $this->dispatcher->dispatch(new DeleteListenerEvent(self::CACHE_PREFIX, [$id]));
+
         return [
             'data' => null,
             'result' => $this->repository->delete($id) ? 'success' : 'error',

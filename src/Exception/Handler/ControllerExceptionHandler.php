@@ -86,8 +86,10 @@ class ControllerExceptionHandler extends ExceptionHandler
     ): ResponseInterface {
         $errors = $exception->getErrors();
         return $this->createJsonResponse($response, 400, [
-            'message' => $this->formatValidationErrorMessage($errors),
-            'errors' => $errors,
+            'error' => $this->formatValidationErrorMessage($errors),
+            'validation_errors' => $errors,
+            'data' => [],
+            'result' =>'error'
         ]);
     }
 
