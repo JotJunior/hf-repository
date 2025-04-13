@@ -70,6 +70,12 @@ class ConfigProvider
                     'destination' => BASE_PATH . '/storage/languages/en/hf-repository.php',
                 ],
                 [
+                    'id' => 'translation-es',
+                    'description' => 'The spanish translation messages for hf-repository.',
+                    'source' => __DIR__ . '/../storage/languages/es/hf-repository.php',
+                    'destination' => BASE_PATH . '/storage/languages/es/hf-repository.php',
+                ],
+                [
                     'id' => 'translation-pt_BR',
                     'description' => 'The brazilian portuguese translation messages for hf-repository.',
                     'source' => __DIR__ . '/../storage/languages/pt_BR/hf-repository.php',
