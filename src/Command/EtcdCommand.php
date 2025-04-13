@@ -19,6 +19,8 @@ use Hyperf\Di\Annotation\Inject;
 use Hyperf\Etcd\KVInterface;
 use Psr\Container\ContainerInterface;
 
+use function Hyperf\Translation\__;
+
 #[Command]
 class EtcdCommand extends HyperfCommand
 {
