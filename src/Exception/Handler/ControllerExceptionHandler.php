@@ -89,7 +89,7 @@ class ControllerExceptionHandler extends ExceptionHandler
             'error' => $this->formatValidationErrorMessage($errors),
             'validation_errors' => $errors,
             'data' => [],
-            'result' =>'error'
+            'result' => 'error',
         ]);
     }
 
@@ -106,7 +106,7 @@ class ControllerExceptionHandler extends ExceptionHandler
     }
 
     private function handleRepositoryException(
-        RepositoryCreateException $exception,
+        RepositoryCreateException|RepositoryUpdateException $exception,
         ResponseInterface $response
     ): ResponseInterface {
         return $this->createJsonResponse($response, 400, [

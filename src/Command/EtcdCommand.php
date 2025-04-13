@@ -36,9 +36,8 @@ class EtcdCommand extends HyperfCommand
     public function configure()
     {
         parent::configure();
-        $this->setDescription('Publish local configuration to ETCD');
-        $this->setHelp('This command is used to publish local configuration to ETCD');
-        $this->addArgument('config-key', null, 'The key of the ETCD client');
+        $this->setDescription(__('hf-repository.command.etcd_description'));
+        $this->addArgument('config-key', null, __('hf-repository.command.config_key_description'));
     }
 
     public function handle()
@@ -49,7 +48,8 @@ class EtcdCommand extends HyperfCommand
         $etcdData = $this->etcd->get($etcdKey);
         $etcdKeyExists = ! empty($etcdData['kvs'][0]['value']);
 
-        if ($etcdKeyExists && $this->ask('The key already exists, do you want to overwrite it? [y/N]', 'N') !== 'y') {
+        $confirmation = $this->ask(__('hf-repository.command.etcd_key_exists', ['key' => $etcdKey]), 'N');
+        if ($etcdKeyExists && strtolower($confirmation) === 'n') {
             $this->line('Aborted.');
             return;
         }

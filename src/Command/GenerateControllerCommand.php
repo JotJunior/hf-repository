@@ -28,8 +28,8 @@ class GenerateControllerCommand extends AbstractCommand
         parent::configure();
         $this->setDescription(__('hf-repository.command.controller_description'));
         $this->addUsage('repo:controller --index=index_name [--api-version=v1] [--force]');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, __('hf-repository.command.index_name_description'));
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, __('hf-repository.command.force_description'));
     }
 
     public function handle()

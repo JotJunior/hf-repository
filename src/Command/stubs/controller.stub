@@ -426,7 +426,7 @@ class {{class_name}}Controller extends AbstractController
         path: self::REQUEST_PATH_ID,
         description: 'Check if a valid {{service_name}} exists by its unique identifier.',
         summary: 'Check {{service_name}}',
-        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:verify']]],
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:view']]],
         tags: ['{{class_name}}'],
         parameters: [
             new SA\Parameter(
@@ -471,7 +471,7 @@ class {{class_name}}Controller extends AbstractController
         ]
     )]
     #[RateLimit(create: 1, capacity: 5)]
-    #[Scope(allow: '{{module_name}}:{{resource_name}}:verify')]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:view')]
     #[Middleware(middleware: {{middleware_strategy}})]
     public function verify{{class_name}}(string $id): PsrResponseInterface
     {

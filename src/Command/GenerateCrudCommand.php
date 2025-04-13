@@ -29,10 +29,10 @@ class GenerateCrudCommand extends AbstractCommand
         parent::configure();
         $this->setDescription(__('hf-repository.command.crud_description'));
         $this->addUsage('repo:crud --index=index_name [--api-version=v1] [--force]');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
-        $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, 'Api version (v1, v2, etc).', 'v1');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, __('hf-repository.command.index_name_description'));
+        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, __('hf-repository.command.object_mapped_fields_description'));
+        $this->addOption('api-version', 'A', InputOption::VALUE_REQUIRED, __('hf-repository.command.api_version_description'), 'v1');
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, __('hf-repository.command.force_description'));
     }
 
     public function handle()
@@ -56,7 +56,7 @@ class GenerateCrudCommand extends AbstractCommand
         $this->force = $this->input->getOption('force');
 
         $this->newLine();
-        $this->line(sprintf('You are about to create a CRUD for index <fg=yellow>%s</> with api version <fg=yellow>%s</>.', $indexName, $apiVersion));
+        $this->line(sprintf(__('hf-repository.command.crud_creation_question'), $indexName, $apiVersion));
         $this->line('The elasticsearch index related entities, repository and controller will be created during this process.');
 
         $this->newLine();
@@ -74,15 +74,15 @@ class GenerateCrudCommand extends AbstractCommand
         $this->createEntities($indexName);
 
         $this->newLine();
-        $this->line('Start creating repository...');
+        $this->line(__('hf-repository.command.start_creating_repository'));
         $this->createRepository($indexName);
 
         $this->newLine();
-        $this->line('Start creating service...');
+        $this->line(__('hf-repository.command.start_creating_service'));
         $this->createService($indexName);
 
         $this->newLine();
-        $this->line('Start creating controller...');
+        $this->line(__('hf-repository.command.start_creating_controller'));
         $this->createController($indexName, $apiVersion);
 
         $this->newLine();

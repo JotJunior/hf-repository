@@ -28,8 +28,8 @@ class GenerateServiceCommand extends AbstractCommand
         parent::configure();
         $this->setDescription(__('hf-repository.command.service_description'));
         $this->addUsage('repo:service --index=index_name [--force]');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing controller.');
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, __('hf-repository.command.index_name_description'));
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, __('hf-repository.command.force_description'));
     }
 
     public function handle()

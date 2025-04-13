@@ -26,8 +26,8 @@ class GenerateRepositoryCommand extends AbstractCommand
         parent::configure();
         $this->setDescription('Create a repository class.');
         $this->addUsage('repo:repository --index=index_name');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch index name.');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Replace existing repository.');
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, __('hf-repository.command.index_name_description'));
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, __('hf-repository.command.force_description'));
     }
 
     public function handle()

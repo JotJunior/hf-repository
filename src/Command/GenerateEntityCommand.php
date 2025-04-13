@@ -24,10 +24,10 @@ class GenerateEntityCommand extends AbstractCommand
     public function configure(): void
     {
         parent::configure();
-        $this->setDescription('Creating entity classes based on the elasticsearch mapping configuration.');
-        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, 'Elasticsearch mapping name');
-        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, 'Fields mapped as objects, separated by comma.');
-        $this->addOption('force', 'F', InputOption::VALUE_NONE, 'Rewrite mapping file');
+        $this->setDescription(__('hf-repository.command.entity_description'));
+        $this->addOption('index', 'I', InputOption::VALUE_REQUIRED, __('hf-repository.command.mapping_name'));
+        $this->addOption('array-fields', 'L', InputOption::VALUE_OPTIONAL, __('hf-repository.command.object_mapped_fields_description'));
+        $this->addOption('force', 'F', InputOption::VALUE_NONE, __('hf-repository.command.force_description'));
     }
 
     public function handle()
