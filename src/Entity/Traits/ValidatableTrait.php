@@ -54,10 +54,10 @@ trait ValidatableTrait
         $validated = [];
 
         foreach ($this->validators as $property => $validators) {
-            if (! empty($validated[$property])) {
-                continue;
-            }
             foreach ($validators as $validator) {
+                if (! empty($validated[$property . $validator::class])) {
+                    continue;
+                }
                 $isValid = $validator
                     ->setContext($this->entityState)
                     ->setProperty($property)
@@ -66,8 +66,8 @@ trait ValidatableTrait
                 if (! $isValid) {
                     $this->errors[$property] = $validator->consumeErrors($property);
                 }
+                $validated[$property . $validator::class] = $property . $validator::class;
             }
-            $validated[$property] = true;
         }
 
         return empty($this->errors);
