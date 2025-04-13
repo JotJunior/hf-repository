@@ -137,7 +137,6 @@ abstract class Repository implements RepositoryInterface
      */
     public function create(EntityInterface $entity): EntityInterface
     {
-        $entity->validate();
         $this->validateEntity($entity);
 
         $result = $this->queryBuilder
@@ -310,6 +309,7 @@ abstract class Repository implements RepositoryInterface
      */
     protected function validateEntity(EntityInterface $entity): void
     {
+        $entity->validate();
         if ($entity->getErrors()) {
             throw new EntityValidationWithErrorsException($entity->getErrors());
         }
