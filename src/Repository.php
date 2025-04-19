@@ -71,6 +71,17 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
+     * Retrieves the index name derived from the class name.
+     * @return string the index name in snake_case format
+     */
+    protected function getIndexName(): string
+    {
+        $className = explode('\\', get_class($this));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
+        return Str::snake($indexName);
+    }
+
+    /**
      * Magic method to handle serialization for coroutine scheduling.
      * Ensures that non-serializable properties are properly handled.
      */
@@ -159,6 +170,19 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
+     * Validates an entity and throws an exception if validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        $entity->validate();
+        if ($entity->getErrors()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
+    }
+
+    /**
      * Retrieves and hydrates the first entity matching the provided parameters.
      * @param array $params an associative array of query parameters used to filter the entities
      * @return null|EntityInterface the hydrated entity instance corresponding to the first match
@@ -176,18 +200,50 @@ abstract class Repository implements RepositoryInterface
         return $this->entityFactory->create($this->entity, $result['data'][0]);
     }
 
-    /**
-     * Executes a search query based on the provided parameters and maps the results
-     * to instances of the specified entity.
-     * @param array $params an associative array containing the parameters for the search query
-     * @return array an array of entity instances resulting from the query execution
-     * @throws ReflectionException
-     */
-    public function search(array $params): array
-    {
-        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
 
-        $result = $query->execute();
+    /**
+     * Performs an autocomplete operation based on the provided keyword and searchable fields.
+     * Generates additional gram fields for more accurate autocomplete matches.
+     * @param string $keyword The term to be autocompleted.
+     * @param array $searchable The list of fields to search against. Defaults to ['name'].
+     * @param array $params Additional parameters for customizing the query.
+     * @return array An array of autocomplete results.
+     */
+    public function autocomplete(string $keyword, array $searchable = ['name'], array $params = []): array
+    {
+        $fields = [];
+        foreach ($searchable as $field) {
+            $fields[] = $field;
+            $fields[] = $field . '._2gram';
+            $fields[] = $field . '._3gram';
+        }
+
+        $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+
+        return $this->queryBuilder
+            ->select(['id', ...$searchable])
+            ->from($this->index)
+            ->autocomplete($keyword, $fields)
+            ->execute();
+    }
+
+    /**
+     * Executes a search operation on the specified index using the provided keyword and searchable criteria.
+     * @param string $keyword The search term to be used in the query.
+     * @param array $searchable The fields or criteria to search against.
+     * @param array|string $fields The fields to be selected in the search result. Default is '*'.
+     * @param array $params Additional parameters to configure the query execution.
+     * @return array An array of results where each result is mapped to an entity instance. Returns an empty array if no data is found.
+     */
+    public function search(string $keyword, array $searchable, array|string $fields = '*', array $params = []): array
+    {
+        $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+
+        $result = $this->queryBuilder
+            ->select($fields)
+            ->from($this->index)
+            ->search($keyword, $searchable)
+            ->execute();
 
         if (empty($result['data'])) {
             return [];
@@ -289,29 +345,5 @@ abstract class Repository implements RepositoryInterface
         return $this->queryBuilder
             ->from($this->index)
             ->exists($id);
-    }
-
-    /**
-     * Retrieves the index name derived from the class name.
-     * @return string the index name in snake_case format
-     */
-    protected function getIndexName(): string
-    {
-        $className = explode('\\', get_class($this));
-        $indexName = Str::plural(str_replace('Repository', '', end($className)));
-        return Str::snake($indexName);
-    }
-
-    /**
-     * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity the entity to validate
-     * @throws EntityValidationWithErrorsException if validation fails
-     */
-    protected function validateEntity(EntityInterface $entity): void
-    {
-        $entity->validate();
-        if ($entity->getErrors()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
     }
 }

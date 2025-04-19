@@ -15,6 +15,7 @@ use App\Entity\{{class_name}}\{{class_name}};
 use App\Service\{{class_name}}Service;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Annotation\GetMapping;
 use Hyperf\HttpServer\Annotation\Middleware;
 use Hyperf\HttpServer\Annotation\RequestMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
@@ -150,6 +151,18 @@ class {{class_name}}Controller extends AbstractController
 
         return $this->response
             ->json($result);
+    }
+
+    #[RateLimit(create: 1, capacity: 50)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:list')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    #[GetMapping(path: self::REQUEST_PATH . '/autocomplete')]
+    public function get{{class_name}}Autocomplete(): PsrResponseInterface
+    {
+        return $this->response
+            ->json($this->service
+                ->autocomplete($this->request->query('search', ''))
+            );
     }
 
     #[SA\Get(
