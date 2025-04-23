@@ -21,5 +21,7 @@ use Hyperf\Swagger\Annotation as SA;
 class {{class_name}} extends Entity
 {
 {{traits}}
+    public const SEARCHABLE = [{{searchable}}];
+
 {{attributes}}
 }

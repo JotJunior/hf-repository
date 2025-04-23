@@ -18,6 +18,7 @@ use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Stringable\Str;
 use Jot\HfElastic\ClientBuilder;
+use Jot\HfElastic\Migration\Mapping;
 use Jot\HfRepository\Exception\IndexNotFoundException;
 use Psr\Container\ContainerInterface;
 
@@ -86,6 +87,7 @@ class AbstractCommand extends HyperfCommand
         }
 
         $apiVersion = $this->ask(__('hf-repository.command.api_version'), $this->apiVersion);
+        $this->apiVersion = $apiVersion;
         $namespace = sprintf('App\Controller\%s', ucfirst($apiVersion));
         $moduleName = $this->ask(__('hf-repository.command.scope_module_name'), $this->moduleName);
         $resourceName = $this->ask(__('hf-repository.command.scope_resource_name'), $schemaName);
@@ -193,8 +195,8 @@ class AbstractCommand extends HyperfCommand
         $className = ucfirst(Str::camel($schemaName));
         $namespace = sprintf('App\Entity\%s', $className);
         $outputDir = $this->outputDir(sprintf('/app/Entity/%s', $className));
-
-        $this->generateEntityFromMapping($this->fetchMapping($this->getIndexName(removePrefix: false)), $className, $namespace, $outputDir, false);
+        $mapping = $this->fetchMappingFromMigration($indexName) ?? $this->fetchMapping($this->getIndexName(removePrefix: false));
+        $this->generateEntityFromMapping($mapping, $className, $namespace, $outputDir, false);
     }
 
     protected function getIndexName(bool $removePrefix = true): string
@@ -283,6 +285,49 @@ class AbstractCommand extends HyperfCommand
         return $template;
     }
 
+    private function fetchMappingFromMigration(string $indexName): ?array
+    {
+        $index = $this->loadMapping($indexName);
+        if (empty($index)) {
+            return null;
+        }
+        return $index->generateMapping();
+    }
+
+    /**
+     * Loads the mapping for the specified index name from the Elasticsearch migrations.
+     * @param string $indexName the name of the index to load the mapping for
+     * @return null|Mapping the mapping object if found, or null if no mapping exists for the specified index
+     */
+    private function loadMapping(string $indexName): ?Mapping
+    {
+        foreach (glob(BASE_PATH . '/migrations/elasticsearch/*.php') as $file) {
+            if (str_contains($file, $indexName . '.php')) {
+                $migration = include $file;
+                return $migration->mapping();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves the mapping configuration for the specified index in Elasticsearch.
+     *
+     * @param string $indexName the name of the Elasticsearch index whose mapping is to be fetched
+     *
+     * @return null|array an associative array representing the index mapping if it exists, or null if the mapping cannot be retrieved
+     */
+    private function fetchMapping(string $indexName): ?array
+    {
+        try {
+            $response = $this->esClient->indices()->getMapping(['index' => $indexName]);
+            return $response[$indexName]['mappings'] ?? null;
+        } catch (Exception $e) {
+            $this->failed($e->getMessage());
+            return null;
+        }
+    }
+
     /**
      * Generates a PHP entity class based on a provided mapping and other parameters.
      *
@@ -292,7 +337,7 @@ class AbstractCommand extends HyperfCommand
      * @param string $outputDir the directory where the generated class file will be saved
      * @param bool $isChild indicates if the current entity is a child entity (default is false)
      */
-    private function generateEntityFromMapping(array $mapping, string $className, string $namespace, string $outputDir, bool $isChild = false): void
+    private function generateEntityFromMapping(array $mapping, string $className, string $namespace, string $outputDir, bool $isChild = false, array $searchable = []): void
     {
         $ignoredFields = ['@timestamp', '@version'];
         $readOnlyFields = ['id', 'created_at', 'updated_at', 'deleted', 'removed', '@version', '@timestamp'];
@@ -303,6 +348,7 @@ class AbstractCommand extends HyperfCommand
             $traits = '';
             $readOnlyFields = [];
         }
+        $searchable = [];
 
         $properties = $mapping['properties'] ?? [];
         $attributes = '';
@@ -409,6 +455,10 @@ class AbstractCommand extends HyperfCommand
                     $attributes .= "    )]\n";
                     break;
                 default:
+                    if (isset($details['fields']['search'])) {
+                        $searchable[$fieldName] = "'{$fieldName}'";
+                    }
+
                     $attributes .= "    #[SA\\Property(\n";
                     $attributes .= "        property: '{$fieldName}',\n";
                     if (str_ends_with($fieldName, '_id')) {
@@ -427,7 +477,14 @@ class AbstractCommand extends HyperfCommand
         }
 
         $schema = $this->generateSwaggerSchema(sprintf('%s.%s', str_replace('\\', '.', $namespace), $className));
-        $template = $this->parseTemplate('entity', ['class_name' => $className, 'schema' => $schema, 'attributes' => $attributes, 'namespace' => $namespace, 'traits' => $traits]);
+        $template = $this->parseTemplate('entity', [
+            'class_name' => $className,
+            'schema' => $schema,
+            'attributes' => $attributes,
+            'namespace' => $namespace,
+            'traits' => $traits,
+            'searchable' => implode(',', $searchable),
+        ]);
         $fileName = sprintf('%s/%s.php', $outputDir, $className);
 
         $this->generateFile($fileName, $template);
@@ -466,21 +523,4 @@ class AbstractCommand extends HyperfCommand
         return preg_replace('/[^a-z0-9_.-]/', '', implode('.', $transform));
     }
 
-    /**
-     * Retrieves the mapping configuration for the specified index in Elasticsearch.
-     *
-     * @param string $indexName the name of the Elasticsearch index whose mapping is to be fetched
-     *
-     * @return null|array an associative array representing the index mapping if it exists, or null if the mapping cannot be retrieved
-     */
-    private function fetchMapping(string $indexName): ?array
-    {
-        try {
-            $response = $this->esClient->indices()->getMapping(['index' => $indexName]);
-            return $response[$indexName]['mappings'] ?? null;
-        } catch (Exception $e) {
-            $this->failed($e->getMessage());
-            return null;
-        }
-    }
 }

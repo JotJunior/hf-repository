@@ -23,7 +23,6 @@ use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
 use ReflectionException;
-
 use function Hyperf\Translation\__;
 
 /**
@@ -200,14 +199,13 @@ abstract class Repository implements RepositoryInterface
         return $this->entityFactory->create($this->entity, $result['data'][0]);
     }
 
-
     /**
      * Performs an autocomplete operation based on the provided keyword and searchable fields.
      * Generates additional gram fields for more accurate autocomplete matches.
-     * @param string $keyword The term to be autocompleted.
+     * @param string $keyword the term to be autocompleted
      * @param array $searchable The list of fields to search against. Defaults to ['name'].
-     * @param array $params Additional parameters for customizing the query.
-     * @return array An array of autocomplete results.
+     * @param array $params additional parameters for customizing the query
+     * @return array an array of autocomplete results
      */
     public function autocomplete(string $keyword, array $searchable = ['name'], array $params = []): array
     {
@@ -228,11 +226,62 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
+     * Paginates a dataset based on the provided parameters.
+     * @param array $params the parameters used to filter or query the dataset
+     * @param int $page the current page number (default is 1)
+     * @param int $perPage the number of items to display per page (default is 10)
+     * @return array an array containing the paginated results, current page, items per page, and total count
+     * @throws ReflectionException
+     */
+    public function paginate(array $params, int $page = 1, int $perPage = 10): array
+    {
+        $page = $params['_page'] ?? $page;
+        $perPage = $params['_per_page'] ?? $perPage;
+
+        if (! empty($params['search'])) {
+            $search = $params['search'];
+            unset($params['search']);
+        }
+
+        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
+
+        if (! empty($search) && ! empty($this->entity::SEARCHABLE)) {
+            $query->search($search, $this->entity::SEARCHABLE);
+        }
+
+        $result = $query
+            ->limit((int)$perPage)
+            ->offset(($page - 1) * $perPage)
+            ->execute();
+
+        $entities = [];
+        if (! empty($result['data'])) {
+            $entities = array_map(
+                function ($item) {
+                    $entity = $this->entityFactory->create($this->entity, $item);
+
+                    return $entity->toArray();
+                },
+                $result['data']
+            );
+        }
+
+        $result['data'] = $entities;
+
+        return [
+            ...$result,
+            'current_page' => (int)$page,
+            'per_page' => (int)$perPage,
+            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
+        ];
+    }
+
+    /**
      * Executes a search operation on the specified index using the provided keyword and searchable criteria.
-     * @param string $keyword The search term to be used in the query.
-     * @param array $searchable The fields or criteria to search against.
+     * @param string $keyword the search term to be used in the query
+     * @param array $searchable the fields or criteria to search against
      * @param array|string $fields The fields to be selected in the search result. Default is '*'.
-     * @param array $params Additional parameters to configure the query execution.
+     * @param array $params additional parameters to configure the query execution
      * @return array An array of results where each result is mapped to an entity instance. Returns an empty array if no data is found.
      */
     public function search(string $keyword, array $searchable, array|string $fields = '*', array $params = []): array
@@ -255,47 +304,6 @@ abstract class Repository implements RepositoryInterface
             },
             $result['data']
         );
-    }
-
-    /**
-     * Paginates a dataset based on the provided parameters.
-     * @param array $params the parameters used to filter or query the dataset
-     * @param int $page the current page number (default is 1)
-     * @param int $perPage the number of items to display per page (default is 10)
-     * @return array an array containing the paginated results, current page, items per page, and total count
-     * @throws ReflectionException
-     */
-    public function paginate(array $params, int $page = 1, int $perPage = 10): array
-    {
-        $page = $params['_page'] ?? $page;
-        $perPage = $params['_per_page'] ?? $perPage;
-
-        $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
-        $result = $query
-            ->limit((int) $perPage)
-            ->offset(($page - 1) * $perPage)
-            ->execute();
-
-        $entities = [];
-        if (! empty($result['data'])) {
-            $entities = array_map(
-                function ($item) {
-                    $entity = $this->entityFactory->create($this->entity, $item);
-
-                    return $entity->toArray();
-                },
-                $result['data']
-            );
-        }
-
-        $result['data'] = $entities;
-
-        return [
-            ...$result,
-            'current_page' => (int) $page,
-            'per_page' => (int) $perPage,
-            'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
-        ];
     }
 
     /**
