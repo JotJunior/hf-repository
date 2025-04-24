@@ -62,6 +62,7 @@ trait ValidatableTrait
                     ->setContext($this->entityState)
                     ->setProperty($property)
                     ->setIdentifier($this->id)
+                    ->setTenant($this->tenant->id ?? null)
                     ->validate($this->{$property});
                 if (! $isValid) {
                     $this->errors[$property] = $validator->consumeErrors($property);
