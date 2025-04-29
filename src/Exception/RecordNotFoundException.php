@@ -14,13 +14,15 @@ namespace Jot\HfRepository\Exception;
 
 use Exception;
 use Throwable;
-
 use function Hyperf\Translation\__;
 
 class RecordNotFoundException extends Exception
 {
+    protected $code = 404;
+
     public function __construct(int $code = 0, ?Throwable $previous = null)
     {
+        $code = $code ?: $this->code;
         $message = __('hf-repository.record_not_found');
         parent::__construct($message, $code, $previous);
     }

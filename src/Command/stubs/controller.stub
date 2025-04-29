@@ -20,6 +20,7 @@ use Hyperf\HttpServer\Annotation\Middleware;
 use Hyperf\HttpServer\Annotation\RequestMapping;
 use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
+use Jot\HfRepository\Exception\RecordNotFoundException;
 use Jot\HfShield\Annotation\Scope;
 use Jot\HfShield\Middleware\BearerStrategy;
 use Jot\HfShield\Middleware\PublicStrategy;
@@ -240,11 +241,7 @@ class {{class_name}}Controller extends AbstractController
         $data = $this->service->getData($id);
 
         if (empty($data)) {
-            return $this->response->withStatus(404)->json([
-                'data' => null,
-                'result' => 'not-found',
-                'error' => 'Document not found',
-            ]);
+            throw new RecordNotFoundException();
         }
 
         return $this->response->json($data);
@@ -354,6 +351,9 @@ class {{class_name}}Controller extends AbstractController
     #[Middleware(middleware: {{middleware_strategy}})]
     public function update{{class_name}}(string $id): PsrResponseInterface
     {
+        if(!$this->service->exists($id)) {
+            throw new RecordNotFoundException();
+        }
         $result = $this->service->update($id, $this->request->all());
         return $this->response->json($result);
     }
