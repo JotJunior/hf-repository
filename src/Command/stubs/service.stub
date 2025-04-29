@@ -83,7 +83,7 @@ class {{class_name}}Service
         return [
             'data' => $entity->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ];
     }
 
@@ -101,7 +101,7 @@ class {{class_name}}Service
         return [
             'data' => $result->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ];
     }
 
@@ -122,7 +122,7 @@ class {{class_name}}Service
         return [
             'data' => $result->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ];
     }
 
@@ -139,7 +139,7 @@ class {{class_name}}Service
         return [
             'data' => null,
             'result' => $this->repository->delete($id) ? 'success' : 'error',
-            'error' => null,
+            'message' => null,
         ];
     }
 
