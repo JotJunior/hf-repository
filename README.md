@@ -438,14 +438,14 @@ class OrderController extends AbstractController
             return $this->response->withStatus(404)->json([
                 'data' => null,
                 'result' => 'not-found',
-                'error' => 'Document not found'
+                'message' => 'Document not found'
             ]);
         }
 
         return $this->response->json([
             'data' => $response->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ]);
     }
 
@@ -488,14 +488,14 @@ class OrderController extends AbstractController
             return $this->response->withStatus(400)->json([
                 'data' => null,
                 'result' => 'error',
-                'error' => $e->getMessage()
+                'message' => $e->getMessage()
             ]);
         }
 
         return $this->response->withStatus(201)->json([
             'data' => $response->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ]);
     }
 
@@ -552,14 +552,14 @@ class OrderController extends AbstractController
             return $this->response->withStatus(400)->json([
                 'data' => null,
                 'result' => 'error',
-                'error' => $e->getMessage()
+                'message' => $e->getMessage()
             ]);
         }
 
         return $this->response->json([
             'data' => $response->toArray(),
             'result' => 'success',
-            'error' => null,
+            'message' => null,
         ]);
     }
 
@@ -627,7 +627,7 @@ class OrderController extends AbstractController
         return $this->response->json([
             'data' => null,
             'result' => $this->repository->delete($id) ? 'success' : 'error',
-            'error' => null,
+            'message' => null,
         ]);
     }
 }

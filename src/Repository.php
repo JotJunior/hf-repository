@@ -211,9 +211,9 @@ abstract class Repository implements RepositoryInterface
     {
         $fields = [];
         foreach ($searchable as $field) {
-            $fields[] = $field;
-            $fields[] = $field . '._2gram';
-            $fields[] = $field . '._3gram';
+            $fields[] = $field . '.search';
+            $fields[] = $field . '.search._2gram';
+            $fields[] = $field . '.search._3gram';
         }
 
         $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
