@@ -34,7 +34,7 @@ class ControllerExceptionHandler extends ExceptionHandler
         ],
         EntityPropertyNotFoundException::class => [
             'status' => 400,
-            'handler' => 'handleValidationException',
+            'handler' => 'handleEntityPropertyNotFoundException',
         ],
         EntityValidationWithErrorsException::class => [
             'status' => 400,
