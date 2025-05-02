@@ -14,6 +14,7 @@ namespace Jot\HfRepository\Exception;
 
 use Exception;
 use Throwable;
+
 use function Hyperf\Translation\__;
 
 class RecordNotFoundException extends Exception

@@ -16,6 +16,7 @@ use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\RateLimit\Exception\RateLimitException;
+use Jot\HfRepository\Exception\EntityPropertyNotFoundException;
 use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
@@ -30,6 +31,10 @@ class ControllerExceptionHandler extends ExceptionHandler
         RateLimitException::class => [
             'status' => 429,
             'handler' => 'handleRateLimitException',
+        ],
+        EntityPropertyNotFoundException::class => [
+            'status' => 400,
+            'handler' => 'handleValidationException',
         ],
         EntityValidationWithErrorsException::class => [
             'status' => 400,
@@ -103,6 +108,17 @@ class ControllerExceptionHandler extends ExceptionHandler
         }
 
         return current($errors)[0];
+    }
+
+    private function handleEntityPropertyNotFoundException(
+        EntityPropertyNotFoundException $exception,
+        ResponseInterface $response
+    ): ResponseInterface {
+        return $this->createJsonResponse($response, 400, [
+            'message' => $exception->getMessage(),
+            'data' => [],
+            'result' => 'error',
+        ]);
     }
 
     private function handleRepositoryException(

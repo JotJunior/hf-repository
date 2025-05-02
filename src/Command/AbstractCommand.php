@@ -522,5 +522,4 @@ class AbstractCommand extends HyperfCommand
         $transform = array_map(fn ($part) => Str::snake($part), $parts);
         return preg_replace('/[^a-z0-9_.-]/', '', implode('.', $transform));
     }
-
 }

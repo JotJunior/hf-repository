@@ -28,8 +28,8 @@ use Jot\HfRepository\Entity\Traits\HydratableTrait;
 use Jot\HfRepository\Entity\Traits\PropertyVisibilityTrait;
 use Jot\HfRepository\Entity\Traits\ValidatableTrait;
 use Jot\HfRepository\Entity\ValidatableInterface;
+use Jot\HfRepository\Exception\EntityPropertyNotFoundException;
 use Jot\HfRepository\Exception\InvalidEntityException;
-use Jot\HfRepository\Exception\PropertyNotFoundException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -86,7 +86,7 @@ abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInt
     public function __get(string $name): mixed
     {
         if (! property_exists($this, $name)) {
-            throw new PropertyNotFoundException($name);
+            throw new EntityPropertyNotFoundException($name);
         }
         return $this->{$name};
     }
