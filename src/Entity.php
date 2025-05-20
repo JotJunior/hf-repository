@@ -42,7 +42,7 @@ use Psr\Container\NotFoundExceptionInterface;
  * - Serializable entities for coroutine scheduling
  * - No static property issues.
  */
-abstract class Entity implements Arrayable, EntityIdentifierInterface, EntityInterface, HashableInterface, PropertyVisibilityInterface, StateAwareInterface, ValidatableInterface
+abstract class Entity implements Arrayable, EntityInterface
 {
     use EntityIdentifierTrait;
     use EntityStateTrait;

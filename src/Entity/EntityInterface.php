@@ -12,10 +12,11 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Entity;
 
+
 /**
  * Core interface for all entities in the system.
  */
-interface EntityInterface
+interface EntityInterface extends EntityIdentifierInterface, HashableInterface, PropertyVisibilityInterface, StateAwareInterface, ValidatableInterface
 {
     public function __get(string $name): mixed;
 }
