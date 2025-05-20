@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository\Entity;
 
-
 /**
  * Core interface for all entities in the system.
  */
