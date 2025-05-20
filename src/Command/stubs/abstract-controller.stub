@@ -14,6 +14,7 @@ namespace {{namespace}};
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\HttpServer\Contract\RequestInterface;
 use Hyperf\HttpServer\Contract\ResponseInterface;
+use Hyperf\Swagger\Annotation as SA;
 use Psr\Container\ContainerInterface;
 
 #[SA\Info(
