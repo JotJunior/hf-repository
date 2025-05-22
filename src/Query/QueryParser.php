@@ -54,7 +54,20 @@ class QueryParser implements QueryParserInterface
             if (str_starts_with($key, '_')) {
                 continue;
             }
-            $queryBuilder->where($key, '=', $value);
+
+            // TODO: Handle recursive nested queries
+            if (str_starts_with($key, 'nested:')) {
+                $nested = str_replace('nested:', '', $key);
+                $property = explode('.', $nested);
+                $path = $property[0];
+                $key = implode('.', $property);
+                if (empty($key)) {
+                    continue;
+                }
+                $queryBuilder->whereNested($path, fn ($query) => $query->where($key, '=', $value));
+            } else {
+                $queryBuilder->where($key, '=', $value);
+            }
         }
 
         return $queryBuilder;
