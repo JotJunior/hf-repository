@@ -19,7 +19,6 @@ use Jot\HfRepository\Service\Contract\ServiceInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
 use RuntimeException;
-
 use function Hyperf\Support\make;
 
 abstract class AbstractService implements ServiceInterface
@@ -34,7 +33,8 @@ abstract class AbstractService implements ServiceInterface
 
     public function __construct(
         protected EventDispatcherInterface $dispatcher
-    ) {
+    )
+    {
         $this->repository = make($this->repositoryClass);
     }
 
@@ -144,11 +144,7 @@ abstract class AbstractService implements ServiceInterface
             $this->dispatcher->dispatch(new DeleteListenerEvent(static::CACHE_PREFIX, [$id]));
         }
 
-        return [
-            'data' => null,
-            'result' => $this->repository->delete($id) ? 'success' : 'error',
-            'message' => null,
-        ];
+        return $this->repository->delete($id);
     }
 
     /**

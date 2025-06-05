@@ -312,12 +312,11 @@ abstract class Repository implements RepositoryInterface
     /**
      * Deletes a record identified by the given ID from the index.
      * @param string $id the unique identifier of the record to be deleted
-     * @return bool true if the record was successfully deleted, false otherwise
+     * @return null|array true if the record was successfully deleted, false otherwise
      */
-    public function delete(string $id): bool
+    public function delete(string $id): ?array
     {
-        $result = $this->queryBuilder->from($this->index)->delete($id);
-        return in_array($result['result'], ['deleted', 'updated', 'noop']);
+        return $this->queryBuilder->from($this->index)->delete($id);
     }
 
     /**
