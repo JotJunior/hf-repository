@@ -26,5 +26,5 @@ interface RepositoryInterface
 
     public function update(EntityInterface $entity): EntityInterface;
 
-    public function delete(string $id): bool;
+    public function delete(string $id): ?array;
 }
