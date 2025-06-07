@@ -465,7 +465,12 @@ class AbstractCommand extends HyperfCommand
                         $aliasField = explode('_', $fieldName)[0];
                         $attributes .= "        description: 'An alias of {$aliasField} id',\n";
                     }
-                    $attributes .= "        type: 'string',\n";
+                    if($fieldName === 'tags') {
+                        $attributes .= "        type: 'array',\n";
+                        $phpType = 'array|string';
+                    } else {
+                        $attributes .= "        type: 'string',\n";
+                    }
                     $attributes .= (in_array($fieldName, $readOnlyFields) || str_ends_with($fieldName, '_id')) ? "        readOnly: true,\n" : '';
                     $attributes .= "        example: ''\n";
                     $attributes .= "    )]\n";
