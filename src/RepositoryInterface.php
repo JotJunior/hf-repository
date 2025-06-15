@@ -20,7 +20,7 @@ interface RepositoryInterface
 
     public function first(array $params): ?EntityInterface;
 
-    public function paginate(array $params, int $page = 1, int $perPage = 10): array;
+    public function paginate(array $params, int $page = 1, int $perPage = 10, array $filters = []): array;
 
     public function create(EntityInterface $entity): EntityInterface;
 
