@@ -38,12 +38,12 @@ class QueryParser implements QueryParserInterface
         $queryBuilder->select(explode(',', $params['_fields'] ?? '*'));
 
         if (! empty($params['_per_page'])) {
-            $queryBuilder->limit((int) $params['_per_page']);
+            $queryBuilder->limit((int)$params['_per_page']);
         }
 
         // Apply sorting
         if (! empty($params['_sort'])) {
-            $sortList = array_map(fn ($item) => explode(':', $item), explode(',', $params['_sort']));
+            $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
             foreach ($sortList as $sort) {
                 $queryBuilder->orderBy($sort[0], $sort[1] ?? 'asc');
             }
@@ -55,7 +55,6 @@ class QueryParser implements QueryParserInterface
                 continue;
             }
 
-            // TODO: Handle recursive nested queries
             if (str_starts_with($key, 'nested:')) {
                 $nested = str_replace('nested:', '', $key);
                 $property = explode('.', $nested);
@@ -64,8 +63,10 @@ class QueryParser implements QueryParserInterface
                 if (empty($key)) {
                     continue;
                 }
-                $queryBuilder->whereNested($path, fn ($query) => $query->where($key, '=', $value));
+                $queryBuilder->whereNested($path, fn($query) => $query->where($key, '=', $value));
             } else {
+                // PHP, for convention, replaces . and spaces to _ on arrays. This workaround is to restore the original key.
+                $key = str_replace('___', '.', $key);
                 $queryBuilder->where($key, '=', $value);
             }
         }
