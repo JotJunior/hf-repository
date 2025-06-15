@@ -324,16 +324,18 @@ abstract class Repository implements RepositoryInterface
      * @param string $index the name of the index from which the entity reference is to be retrieved
      * @param string $id the unique identifier of the entity to fetch
      * @param array $fields the fields to include in the result. Defaults to ['id', 'name'].
-     * @return array an array containing the entity reference data fetched from the index
+     * @return null|array an array containing the entity reference data fetched from the index
      */
     #[Cacheable(prefix: 'entity:reference', value: '{index}:{id}', ttl: 60)]
-    public function fetchEntityReference(string $index, string $id, array $fields = ['id', 'name']): array
+    public function fetchEntityReference(string $index, string $id, array $fields = ['id', 'name']): ?array
     {
-        return $this->queryBuilder
+        $result = $this->queryBuilder
             ->select($fields)
             ->from($index)
             ->where('id', $id)
             ->execute();
+
+        return $result['data'][0] ?? null;
     }
 
     /**
