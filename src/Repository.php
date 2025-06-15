@@ -190,15 +190,7 @@ abstract class Repository implements RepositoryInterface
             ->execute();
     }
 
-    /**
-     * Paginates a dataset based on the provided parameters.
-     * @param array $params the parameters used to filter or query the dataset
-     * @param int $page the current page number (default is 1)
-     * @param int $perPage the number of items to display per page (default is 10)
-     * @return array an array containing the paginated results, current page, items per page, and total count
-     * @throws ReflectionException
-     */
-    public function paginate(array $params, int $page = 1, int $perPage = 10): array
+    public function paginate(array $params, int $page = 1, int $perPage = 10, array $filters = []): array
     {
         $page = $params['_page'] ?? $page;
         $perPage = $params['_per_page'] ?? $perPage;
@@ -216,8 +208,17 @@ abstract class Repository implements RepositoryInterface
 
         $result = $query
             ->limit((int) $perPage)
-            ->offset(($page - 1) * $perPage)
-            ->execute();
+            ->offset(($page - 1) * $perPage);
+        if ($filters) {
+            foreach ($filters as $filter) {
+                $result->addAggregation(str_replace('.', '_', $filter), [
+                    'terms' => [
+                        'field' => $filter,
+                        'size' => 50,
+                    ],
+                ]);
+            }
+        }
 
         $entities = [];
         if (! empty($result['data'])) {
