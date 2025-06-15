@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Jot\HfRepository;
 
+use Hyperf\Cache\Annotation\Cacheable;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
@@ -26,19 +27,6 @@ use ReflectionException;
 
 use function Hyperf\Translation\__;
 
-/**
- * Abstract Repository class implementing the Repository pattern.
- * This class follows the SOLID principles:
- * - Single Responsibility: Focused on data access operations
- * - Open/Closed: Extensible through inheritance and composition
- * - Liskov Substitution: Subclasses can be used interchangeably
- * - Interface Segregation: Uses specific interfaces for different responsibilities
- * - Dependency Inversion: Depends on abstractions, not concretions
- * Optimized for Swoole/Hyperf environment with coroutine safety:
- * - Implements proper dependency injection
- * - Avoids static properties for coroutine safety
- * - Handles serialization for coroutine scheduling.
- */
 abstract class Repository implements RepositoryInterface
 {
     /**
@@ -329,6 +317,23 @@ abstract class Repository implements RepositoryInterface
         return $this->queryBuilder
             ->from($this->index)
             ->exists($id);
+    }
+
+    /**
+     * Fetches an entity reference from the specified index based on the provided ID and selected fields.
+     * @param string $index the name of the index from which the entity reference is to be retrieved
+     * @param string $id the unique identifier of the entity to fetch
+     * @param array $fields the fields to include in the result. Defaults to ['id', 'name'].
+     * @return array an array containing the entity reference data fetched from the index
+     */
+    #[Cacheable(prefix: 'entity:reference', value: '{index}:{id}', ttl: 60)]
+    public function fetchEntityReference(string $index, string $id, array $fields = ['id', 'name']): array
+    {
+        return $this->queryBuilder
+            ->select($fields)
+            ->from($index)
+            ->where('id', $id)
+            ->execute();
     }
 
     /**

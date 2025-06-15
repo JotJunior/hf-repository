@@ -19,6 +19,7 @@ use Jot\HfRepository\Service\Contract\ServiceInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
 use RuntimeException;
+
 use function Hyperf\Support\make;
 
 abstract class AbstractService implements ServiceInterface
@@ -33,8 +34,7 @@ abstract class AbstractService implements ServiceInterface
 
     public function __construct(
         protected EventDispatcherInterface $dispatcher
-    )
-    {
+    ) {
         $this->repository = make($this->repositoryClass);
     }
 
