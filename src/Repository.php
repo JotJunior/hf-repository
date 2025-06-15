@@ -24,7 +24,6 @@ use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
 use ReflectionException;
-
 use function Hyperf\Translation\__;
 
 abstract class Repository implements RepositoryInterface
@@ -56,6 +55,17 @@ abstract class Repository implements RepositoryInterface
     public function __construct()
     {
         $this->index = $this->getIndexName();
+    }
+
+    /**
+     * Retrieves the index name derived from the class name.
+     * @return string the index name in snake_case format
+     */
+    protected function getIndexName(): string
+    {
+        $className = explode('\\', get_class($this));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
+        return Str::snake($indexName);
     }
 
     /**
@@ -147,6 +157,19 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
+     * Validates an entity and throws an exception if validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        $entity->validate();
+        if ($entity->getErrors()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
+    }
+
+    /**
      * Retrieves and hydrates the first entity matching the provided parameters.
      * @param array $params an associative array of query parameters used to filter the entities
      * @return null|EntityInterface the hydrated entity instance corresponding to the first match
@@ -207,7 +230,7 @@ abstract class Repository implements RepositoryInterface
         }
 
         $result = $query
-            ->limit((int) $perPage)
+            ->limit((int)$perPage)
             ->offset(($page - 1) * $perPage);
         if ($filters) {
             foreach ($filters as $filter) {
@@ -219,6 +242,7 @@ abstract class Repository implements RepositoryInterface
                 ]);
             }
         }
+        $result = $result->execute();
 
         $entities = [];
         if (! empty($result['data'])) {
@@ -232,12 +256,14 @@ abstract class Repository implements RepositoryInterface
             );
         }
 
+
         $result['data'] = $entities;
 
         return [
             ...$result,
-            'current_page' => (int) $page,
-            'per_page' => (int) $perPage,
+            'current_page' => (int)$page,
+            'filters' => $result['filters'],
+            'per_page' => (int)$perPage,
             'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
         ];
     }
@@ -337,29 +363,5 @@ abstract class Repository implements RepositoryInterface
             ->execute();
 
         return $result['data'][0] ?? null;
-    }
-
-    /**
-     * Retrieves the index name derived from the class name.
-     * @return string the index name in snake_case format
-     */
-    protected function getIndexName(): string
-    {
-        $className = explode('\\', get_class($this));
-        $indexName = Str::plural(str_replace('Repository', '', end($className)));
-        return Str::snake($indexName);
-    }
-
-    /**
-     * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity the entity to validate
-     * @throws EntityValidationWithErrorsException if validation fails
-     */
-    protected function validateEntity(EntityInterface $entity): void
-    {
-        $entity->validate();
-        if ($entity->getErrors()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
     }
 }
