@@ -43,6 +43,7 @@ class QueryParser implements QueryParserInterface
 
         // Apply sorting
         if (! empty($params['_sort'])) {
+            $params['_sort'] = str_replace('___', '.', $params['_sort']);
             $sortList = array_map(fn($item) => explode(':', $item), explode(',', $params['_sort']));
             foreach ($sortList as $sort) {
                 $queryBuilder->orderBy($sort[0], $sort[1] ?? 'asc');
