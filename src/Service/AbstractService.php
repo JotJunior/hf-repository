@@ -38,16 +38,11 @@ abstract class AbstractService implements ServiceInterface
         $this->repository = make($this->repositoryClass);
     }
 
-    /**
-     * Paginates the provided query.
-     * @param array $query the query parameters to be paginated
-     * @return array the result set after applying pagination
-     * @throws ReflectionException
-     */
-    public function paginate(array $query): array
+
+    public function paginate(array $query, array $filters = []): array
     {
         $query['_sort'] = $query['_sort'] ?? 'name:asc';
-        return $this->repository->paginate($query);
+        return $this->repository->paginate(params: $query, filters: $filters);
     }
 
     /**

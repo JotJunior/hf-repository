@@ -14,7 +14,7 @@ namespace Jot\HfRepository\Service\Contract;
 
 interface ReadableServiceInterface
 {
-    public function paginate(array $query): array;
+    public function paginate(array $query, array $filters = []): array;
 
     public function autocomplete(string $keyword): array;
 
