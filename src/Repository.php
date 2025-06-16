@@ -238,7 +238,7 @@ abstract class Repository implements RepositoryInterface
         return [
             ...$result,
             'current_page' => (int) $page,
-            'filters' => $result['filters'],
+            'filters' => $result['filters'] ?? [],
             'per_page' => (int) $perPage,
             'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
         ];
