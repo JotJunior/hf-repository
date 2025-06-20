@@ -132,7 +132,7 @@ abstract class Repository implements RepositoryInterface
             ->insert($entity->toArray());
 
         if ($result['result'] !== 'created') {
-            $message = __('hf-repository.failed_create_entity');
+            $message = __('hf-repository.failed_create_entity', ['entity' => $entity::class]);
             throw new RepositoryCreateException($result['error'] ?? $message);
         }
 
@@ -329,7 +329,7 @@ abstract class Repository implements RepositoryInterface
      * @param array $fields the fields to include in the result. Defaults to ['id', 'name'].
      * @return null|array an array containing the entity reference data fetched from the index
      */
-    #[Cacheable(prefix: 'entity:reference', value: '{index}:{id}', ttl: 60)]
+    #[Cacheable(prefix: 'entity:reference', value: '#{index}_#{id}', ttl: 60)]
     public function fetchEntityReference(string $index, string $id, array $fields = ['id', 'name']): ?array
     {
         $result = $this->queryBuilder
