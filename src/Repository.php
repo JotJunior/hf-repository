@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Cache\Annotation\Cacheable;
-use Hyperf\Cache\Listener\DeleteListenerEvent;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
@@ -24,9 +23,8 @@ use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
-use Throwable;
+
 use function Hyperf\Translation\__;
 
 abstract class Repository implements RepositoryInterface
@@ -55,23 +53,9 @@ abstract class Repository implements RepositoryInterface
     #[Inject]
     protected EntityFactoryInterface $entityFactory;
 
-    #[Inject]
-    protected EventDispatcherInterface $dispatcher;
-
     public function __construct()
     {
         $this->index = $this->getIndexName();
-    }
-
-    /**
-     * Retrieves the index name derived from the class name.
-     * @return string the index name in snake_case format
-     */
-    protected function getIndexName(): string
-    {
-        $className = explode('\\', get_class($this));
-        $indexName = Str::plural(str_replace('Repository', '', end($className)));
-        return Str::snake($indexName);
     }
 
     /**
@@ -93,7 +77,6 @@ abstract class Repository implements RepositoryInterface
      * @param string $id the unique identifier of the entity
      * @return null|EntityInterface the hydrated entity if found, or null if not found
      */
-    #[Cacheable(prefix: 'repository:entity', ttl: 60, listener: 'user:entity')]
     public function find(string $id): ?EntityInterface
     {
         $result = $this->queryBuilder
@@ -141,25 +124,11 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
-     * Validates an entity and throws an exception if validation fails.
-     * @param EntityInterface $entity the entity to validate
-     * @throws EntityValidationWithErrorsException if validation fails
-     */
-    protected function validateEntity(EntityInterface $entity): void
-    {
-        $entity->validate();
-        if ($entity->getErrors()) {
-            throw new EntityValidationWithErrorsException($entity->getErrors());
-        }
-    }
-
-    /**
      * Retrieves and hydrates the first entity matching the provided parameters.
      * @param array $params an associative array of query parameters used to filter the entities
      * @return null|EntityInterface the hydrated entity instance corresponding to the first match
      * @throws ReflectionException
      */
-    #[Cacheable(prefix: 'repository:entity', ttl: 60, listener: 'user:entity')]
     public function first(array $params): ?EntityInterface
     {
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
@@ -215,7 +184,7 @@ abstract class Repository implements RepositoryInterface
         }
 
         $result = $query
-            ->limit((int)$perPage)
+            ->limit((int) $perPage)
             ->offset(($page - 1) * $perPage);
         if ($filters) {
             foreach ($filters as $filter) {
@@ -245,9 +214,9 @@ abstract class Repository implements RepositoryInterface
 
         return [
             ...$result,
-            'current_page' => (int)$page,
+            'current_page' => (int) $page,
             'filters' => $result['filters'] ?? [],
-            'per_page' => (int)$perPage,
+            'per_page' => (int) $perPage,
             'total' => $this->queryParser->parse($params, $this->queryBuilder->from($this->index))->count(),
         ];
     }
@@ -300,12 +269,6 @@ abstract class Repository implements RepositoryInterface
             ->from($this->index)
             ->update($entity->getId(), $entity->toArray());
 
-        try {
-            $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$entity->getId()]));
-        } catch (Throwable $th) {
-            // do nothing for now
-        }
-
         if (! in_array($result['result'], ['updated', 'noop'])) {
             $message = __('hf-repository.failed_update_entity');
             throw new RepositoryUpdateException($result['error'] ?? $message);
@@ -321,11 +284,6 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): ?array
     {
-        try {
-            $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$id]));
-        } catch (Throwable $th) {
-            // do nothing for now
-        }
         return $this->queryBuilder->from($this->index)->delete($id);
     }
 
@@ -358,5 +316,29 @@ abstract class Repository implements RepositoryInterface
             ->execute();
 
         return $result['data'][0] ?? null;
+    }
+
+    /**
+     * Retrieves the index name derived from the class name.
+     * @return string the index name in snake_case format
+     */
+    protected function getIndexName(): string
+    {
+        $className = explode('\\', get_class($this));
+        $indexName = Str::plural(str_replace('Repository', '', end($className)));
+        return Str::snake($indexName);
+    }
+
+    /**
+     * Validates an entity and throws an exception if validation fails.
+     * @param EntityInterface $entity the entity to validate
+     * @throws EntityValidationWithErrorsException if validation fails
+     */
+    protected function validateEntity(EntityInterface $entity): void
+    {
+        $entity->validate();
+        if ($entity->getErrors()) {
+            throw new EntityValidationWithErrorsException($entity->getErrors());
+        }
     }
 }
