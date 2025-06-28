@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Jot\HfRepository;
 
 use Hyperf\Cache\Annotation\Cacheable;
+use Hyperf\Cache\Listener\DeleteListenerEvent;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\Di\Annotation\Inject;
 use Hyperf\Stringable\Str;
@@ -23,6 +24,7 @@ use Jot\HfRepository\Exception\EntityValidationWithErrorsException;
 use Jot\HfRepository\Exception\RepositoryCreateException;
 use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
 
 use function Hyperf\Translation\__;
@@ -52,6 +54,9 @@ abstract class Repository implements RepositoryInterface
 
     #[Inject]
     protected EntityFactoryInterface $entityFactory;
+
+    #[Inject]
+    protected EventDispatcherInterface $dispatcher;
 
     public function __construct()
     {
@@ -100,7 +105,7 @@ abstract class Repository implements RepositoryInterface
      * @param string $id the unique identifier of the entity
      * @return null|EntityInterface the hydrated entity if found, or null if not found
      */
-    #[Cacheable(prefix: 'entity', ttl: 10, listener: 'user:entity')]
+    #[Cacheable(prefix: 'repository:entity', ttl: 60, listener: 'user:entity')]
     public function find(string $id): ?EntityInterface
     {
         $result = $this->queryBuilder
@@ -297,6 +302,8 @@ abstract class Repository implements RepositoryInterface
             $message = __('hf-repository.failed_update_entity');
             throw new RepositoryUpdateException($result['error'] ?? $message);
         }
+
+        $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$entity->getId()]));
 
         return $this->entityFactory->create($this->entity, $result['data']);
     }
