@@ -321,6 +321,11 @@ abstract class Repository implements RepositoryInterface
      */
     public function delete(string $id): ?array
     {
+        try {
+            $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$id]));
+        } catch (Throwable $th) {
+            // do nothing for now
+        }
         return $this->queryBuilder->from($this->index)->delete($id);
     }
 
