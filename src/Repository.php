@@ -26,6 +26,7 @@ use Jot\HfRepository\Exception\RepositoryUpdateException;
 use Jot\HfRepository\Query\QueryParserInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
+use Throwable;
 
 use function Hyperf\Translation\__;
 
@@ -135,6 +136,7 @@ abstract class Repository implements RepositoryInterface
      * @return null|EntityInterface the hydrated entity instance corresponding to the first match
      * @throws ReflectionException
      */
+    #[Cacheable(prefix: 'repository:entity', ttl: 60, listener: 'user:entity')]
     public function first(array $params): ?EntityInterface
     {
         $query = $this->queryParser->parse($params, $this->queryBuilder->from($this->index));
@@ -280,7 +282,11 @@ abstract class Repository implements RepositoryInterface
             throw new RepositoryUpdateException($result['error'] ?? $message);
         }
 
-        $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$entity->getId()]));
+        try {
+            $this->dispatcher->dispatch(new DeleteListenerEvent('repository:entity', [$result['_id']]));
+        } catch (Throwable $th) {
+            // do nothing for now
+        }
 
         return $this->entityFactory->create($this->entity, $result['data']);
     }
