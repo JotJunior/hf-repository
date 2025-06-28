@@ -64,29 +64,6 @@ abstract class Repository implements RepositoryInterface
     }
 
     /**
-     * Magic method to handle serialization for coroutine scheduling.
-     * Ensures that non-serializable properties are properly handled.
-     */
-    public function __sleep(): array
-    {
-        $properties = get_object_vars($this);
-
-        // Remove container and other non-serializable properties
-        unset($properties['container']);
-
-        return array_keys($properties);
-    }
-
-    /**
-     * Magic method to handle unserialization after coroutine scheduling.
-     * Restores container and other dependencies.
-     */
-    public function __wakeup(): void
-    {
-        // Container will be re-injected by Hyperf's dependency injection
-    }
-
-    /**
      * Creates a deep clone of the repository, ensuring all nested objects are cloned.
      * Important for coroutine safety to prevent shared references.
      */
