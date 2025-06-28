@@ -63,6 +63,10 @@ abstract class AbstractController
  
      protected const QUERY_SORT = '_sort';
  
+    protected const HEADER_CUSTOMER_ID = 'x-customer-id';
+
+    protected const HEADER_DESCRIPTION_CUSTOMER_ID = 'The active customer ID';
+
      protected const DESCRIPTION_PARAMETER_ID = 'Unique record identifier';
  
      protected const EXAMPLE_PARAMETER_ID = '9fb949e3-2ecf-4d21-8130-a009509da939';

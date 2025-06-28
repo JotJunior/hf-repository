@@ -22,10 +22,7 @@ use Hyperf\RateLimit\Annotation\RateLimit;
 use Hyperf\Swagger\Annotation as SA;
 use Jot\HfRepository\Exception\RecordNotFoundException;
 use Jot\HfShield\Annotation\Scope;
-use Jot\HfShield\Middleware\BearerStrategy;
-use Jot\HfShield\Middleware\PublicStrategy;
 use Jot\HfShield\Middleware\SessionStrategy;
-use Jot\HfShield\Middleware\SignedJwtStrategy;
 use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 use function Hyperf\Support\make;

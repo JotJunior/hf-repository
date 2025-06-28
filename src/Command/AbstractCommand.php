@@ -91,12 +91,17 @@ class AbstractCommand extends HyperfCommand
         $namespace = sprintf('App\Controller\%s', ucfirst($apiVersion));
         $moduleName = $this->ask(__('hf-repository.command.scope_module_name'), $this->moduleName);
         $resourceName = $this->ask(__('hf-repository.command.scope_resource_name'), $schemaName);
-        $middlewareStrategy = match ($this->ask(__('hf-repository.command.enable_shield_strategy'), 'session')) {
+
+        $strategies = [
             'bearer' => 'BearerStrategy::class',
             'session' => 'SessionStrategy::class',
+            'customer' => 'CustomerStrategy::class',
             'signed_jwt' => 'SignedJwtStrategy::class',
-            default => 'NoneStrategy::class',
-        };
+        ];
+
+        $selectedStrategy = $this->ask(__('hf-repository.command.enable_shield_strategy'), 'session');
+
+        $middlewareStrategy = $strategies[$selectedStrategy];
 
         $variables = [
             'api_version' => $apiVersion,
@@ -111,7 +116,7 @@ class AbstractCommand extends HyperfCommand
 
         $controllerDirectory = $this->outputDir(sprintf('/app/Controller/%s', ucfirst($apiVersion)));
 
-        $template = $this->parseTemplate('controller', $variables);
+        $template = $this->parseTemplate(sprintf('%s-%s', 'controller', $selectedStrategy), $variables);
 
         $controllerFile = sprintf('%s/%sController.php', $controllerDirectory, $className);
 

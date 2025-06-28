@@ -1,0 +1,545 @@
+<?php
+
+declare(strict_types=1);
+/**
+ * This file is part of the hf_repository module, a package build for Hyperf framework that is responsible for manage controllers, entities and repositories.
+ *
+ * @author   Joao Zanon <jot@jot.com.br>
+ * @link     https://github.com/JotJunior/hf-repository
+ * @license  MIT
+ */
+
+namespace {{namespace}};
+
+use App\Entity\{{class_name}}\{{class_name}};
+use App\Service\{{class_name}}Service;
+use Hyperf\Di\Annotation\Inject;
+use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Annotation\GetMapping;
+use Hyperf\HttpServer\Annotation\Middleware;
+use Hyperf\HttpServer\Annotation\RequestMapping;
+use Hyperf\RateLimit\Annotation\RateLimit;
+use Hyperf\Swagger\Annotation as SA;
+use Jot\HfRepository\Exception\RecordNotFoundException;
+use Jot\HfShield\Annotation\Scope;
+use Jot\HfShield\Middleware\CustomerStrategy;
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
+
+use function Hyperf\Support\make;
+
+#[SA\HyperfServer('http')]
+#[SA\Tag(
+    name: '{{class_name}}',
+    description: 'Endpoints related to {{service_name}} management'
+)]
+#[SA\Schema(
+    schema: '{{module_name}}.error.response',
+    required: ['result', 'error'],
+    properties: [
+        new SA\Property(property: 'result', description: self::DESCRIPTION_RESPONSE_ERROR_RESULT, type: 'string', example: 'error'),
+        new SA\Property(property: 'error', description: self::DESCRIPTION_RESPONSE_ERROR_MESSAGE, type: 'string', example: 'Error message'),
+        new SA\Property(property: 'data', description: self::DESCRIPTION_RESPONSE_ERROR_JSON, type: 'string|array', example: null),
+    ],
+    type: 'object'
+)]
+#[Controller(prefix: '/{{api_version}}')]
+class {{class_name}}Controller extends AbstractController
+{
+    private const REQUEST_PATH = '/{{api_version}}/{{module_name}}/{{service_name}}';
+    private const REQUEST_PATH_ID = '/{{api_version}}/{{module_name}}/{{service_name}}/{id}';
+    private const RESPONSE_SCHEMA_CONTENT = '#/components/schemas/app.entity.{{schema_name}}.{{schema_name}}';
+    private const RESPONSE_SCHEMA_ERROR = '#/components/schemas/{{module_name}}.error.response';
+
+    #[Inject]
+    protected {{class_name}}Service $service;
+
+    #[SA\Get(
+        path: self::REQUEST_PATH,
+        description: 'Retrieve a list of {{service_name}} with optional pagination and filters.',
+        summary: 'Get {{class_name}}s List',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:list']]],
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: self::QUERY_PAGE_NUMBER,
+                description: self::DESCRIPTION_PAGE_NUMBER,
+                in: 'query',
+                required: false,
+                schema: new SA\Schema(type: 'integer', example: 1)
+            ),
+            new SA\Parameter(
+                name: self::QUERY_RESULTS_PER_PAGE,
+                description: self::DESCRIPTION_PAGE_RESULTS_PER_PAGE,
+                in: 'query',
+                required: false,
+                schema: new SA\Schema(type: 'integer', example: 10)
+            ),
+            new SA\Parameter(
+                name: self::QUERY_SORT,
+                description: self::DESCRIPTION_PAGE_RESULTS_SORT,
+                in: 'query',
+                required: false,
+                schema: new SA\Schema(type: 'string', example: 'created_at:desc,updated_at:desc')
+            ),
+            new SA\Parameter(
+                name: self::QUERY_RESULT_FIELDS,
+                description: self::DESCRIPTION_PAGE_RESULTS_FIELDS,
+                in: 'query',
+                required: false,
+                schema: new SA\Schema(type: 'string', example: 'id,created_at,updated_at')
+            ),
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 200,
+                description: '{{class_name}} details retrieved successfully',
+                content: new SA\JsonContent(
+                    properties: [
+                        new SA\Property(
+                            property: 'data',
+                            type: 'array',
+                            items: new SA\Items(ref: self::RESPONSE_SCHEMA_CONTENT)
+                        ),
+                        new SA\Property(
+                            property: 'result',
+                            type: 'string',
+                            example: 'success'
+                        ),
+                        new SA\Property(
+                            property: 'error',
+                            type: 'string',
+                            example: null,
+                            nullable: true
+                        ),
+                    ],
+                    type: 'object'
+                )
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 10)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:list')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function get{{class_name}}List(): PsrResponseInterface
+    {
+        $result = $this->service->paginate($this->request->query());
+        if ($result['result'] === 'error') {
+            return $this->response->withStatus(400)->json($result);
+        }
+
+        return $this->response
+            ->json($result);
+    }
+
+    #[RateLimit(create: 1, capacity: 50)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:list')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    #[GetMapping(path: self::REQUEST_PATH . '/autocomplete')]
+    public function get{{class_name}}Autocomplete(): PsrResponseInterface
+    {
+        return $this->response
+            ->json($this->service
+                ->autocomplete($this->request->query('search', ''))
+            );
+    }
+
+    #[SA\Get(
+        path: self::REQUEST_PATH_ID,
+        description: 'Retrieve the details of a specific {{service_name}} identified by ID.',
+        summary: 'Get {{class_name}} Data',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:view']]],
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: 'id',
+                description: self::DESCRIPTION_PARAMETER_ID,
+                in: 'path',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: self::EXAMPLE_PARAMETER_ID)
+            ),
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 200,
+                description: '{{class_name}} details retrieved successfully',
+                content: new SA\JsonContent(
+                    properties: [
+                        new SA\Property(
+                            property: 'data',
+                            ref: self::RESPONSE_SCHEMA_CONTENT
+                        ),
+                        new SA\Property(
+                            property: 'result',
+                            type: 'string',
+                            example: 'success'
+                        ),
+                        new SA\Property(
+                            property: 'error',
+                            type: 'string',
+                            example: 'Invalid request parameters',
+                            nullable: true
+                        ),
+                    ],
+                    type: 'object'
+                )
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 404,
+                description: '{{class_name}} not Found',
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 10)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:view')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function get{{class_name}}Data(string $id): PsrResponseInterface
+    {
+        $data = $this->service->getData($id);
+
+        if (empty($data)) {
+            throw new RecordNotFoundException();
+        }
+
+        return $this->response->json($data);
+    }
+
+    #[SA\Post(
+        path: self::REQUEST_PATH,
+        description: 'Create a new {{service_name}}.',
+        summary: 'Create a New {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:create']]],
+        requestBody: new SA\RequestBody(
+            required: true,
+            content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
+        ),
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 201,
+                description: '{{class_name}} created',
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 5)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:create')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function create{{class_name}}(): PsrResponseInterface
+    {
+        $result = $this->service->create($this->request->all());
+        return $this->response->withStatus(201)->json($result);
+    }
+
+    #[SA\Put(
+        path: self::REQUEST_PATH_ID,
+        description: 'Update the details of an existing {{service_name}}.',
+        summary: 'Update an existing {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:update']]],
+        requestBody: new SA\RequestBody(
+            required: true,
+            content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
+        ),
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: 'id',
+                description: self::DESCRIPTION_PARAMETER_ID,
+                in: 'path',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: '12345')
+            ),
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 200,
+                description: '{{class_name}} Updated',
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_CONTENT)
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 404,
+                description: '{{class_name}} Not Found',
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 2)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:update')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function update{{class_name}}(string $id): PsrResponseInterface
+    {
+        if(!$this->service->exists($id)) {
+            throw new RecordNotFoundException();
+        }
+        $result = $this->service->update($id, $this->request->all());
+        return $this->response->json($result);
+    }
+
+    #[SA\Delete(
+        path: self::REQUEST_PATH_ID,
+        description: 'Delete an existing {{service_name}} by its unique identifier.',
+        summary: 'Delete an existing {{class_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:delete']]],
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: 'id',
+                description: self::DESCRIPTION_PARAMETER_ID,
+                in: 'path',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: '12345')
+            ),
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 200,
+                description: '{{class_name}} Deleted',
+                content: new SA\JsonContent(
+                    properties: [
+                        new SA\Property(
+                            property: 'data',
+                            type: 'string',
+                            nullable: true
+                        ),
+                        new SA\Property(
+                            property: 'result',
+                            type: 'string',
+                            example: 'success'
+                        ),
+                        new SA\Property(
+                            property: 'error',
+                            type: 'string',
+                            example: '{{class_name}} not found',
+                            nullable: true
+                        ),
+                    ],
+                    type: 'object'
+                )
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 404,
+                description: '{{class_name}} Not Found',
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 2)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:delete')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function delete{{class_name}}(string $id): PsrResponseInterface
+    {
+        $result = $this->service->delete($id);
+        return $this->response->json($result);
+    }
+
+    #[SA\Head(
+        path: self::REQUEST_PATH_ID,
+        description: 'Check if a valid {{service_name}} exists by its unique identifier.',
+        summary: 'Check {{service_name}}',
+        security: [['shieldBearerAuth' => ['{{module_name}}:{{resource_name}}:view']]],
+        tags: ['{{class_name}}'],
+        parameters: [
+            new SA\Parameter(
+                name: 'id',
+                description: 'Unique identifier of the {{service_name}}',
+                in: 'path',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'abc1234')
+            ),
+            new SA\Parameter(
+                name: self::HEADER_CUSTOMER_ID,
+                description: self::HEADER_DESCRIPTION_CUSTOMER_ID,
+                in: 'header',
+                required: true,
+                schema: new SA\Schema(type: 'string', example: 'ab1234cd-1234-1234-1234-1234abcdef')
+            ),
+        ],
+        responses: [
+            new SA\Response(
+                response: 204,
+                description: '{{class_name}} found',
+                content: null
+            ),
+            new SA\Response(
+                response: 400,
+                description: self::DESCRIPTION_BAD_REQUEST,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 401,
+                description: self::DESCRIPTION_UNAUTHORIZED_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 403,
+                description: self::DESCRIPTION_FORBIDDEN_ACCESS,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+            new SA\Response(
+                response: 404,
+                description: '{{class_name}} not Found',
+                content: null
+            ),
+            new SA\Response(
+                response: 500,
+                description: self::DESCRIPTION_APPLICATION_ERROR,
+                content: new SA\JsonContent(ref: self::RESPONSE_SCHEMA_ERROR)
+            ),
+        ]
+    )]
+    #[RateLimit(create: 1, capacity: 5)]
+    #[Scope(allow: '{{module_name}}:{{resource_name}}:view')]
+    #[Middleware(middleware: {{middleware_strategy}})]
+    public function verify{{class_name}}(string $id): PsrResponseInterface
+    {
+        $exists = $this->service->exists($id);
+        return $this->response->withStatus($exists ? 204 : 404)->raw('');
+    }
+
+    #[RequestMapping(path: '/{{api_version}}/{{module_name}}/{{service_name}}[/[{id}]]', methods: ['OPTIONS'])]
+    public function requestOptions(): PsrResponseInterface
+    {
+        return $this->response
+            ->json([
+                'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'],
+                'rate_limit' => 'Max 10 requests per second.',
+            ]);
+    }
+}
