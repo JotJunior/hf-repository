@@ -100,6 +100,7 @@ abstract class Repository implements RepositoryInterface
      * @param string $id the unique identifier of the entity
      * @return null|EntityInterface the hydrated entity if found, or null if not found
      */
+    #[Cacheable(prefix: 'entity', ttl: 10, listener: 'user:entity')]
     public function find(string $id): ?EntityInterface
     {
         $result = $this->queryBuilder
