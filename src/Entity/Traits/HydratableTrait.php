@@ -122,6 +122,10 @@ trait HydratableTrait
             $array[Str::{$this->returnMode}($propertyName)] = $this->extractVariables($value, $params);
         }
 
+        if (empty($array['id'])) {
+            unset($array['id']);
+        }
+
         return array_filter($array, fn ($value) => $value !== null);
     }
 
