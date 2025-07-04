@@ -307,8 +307,12 @@ abstract class Repository implements RepositoryInterface
      * @return null|array an array containing the entity reference data fetched from the index
      */
     #[Cacheable(prefix: 'entity:reference', value: '#{index}_#{id}', ttl: 60)]
-    public function fetchEntityReference(string $index, string $id, array $fields = ['id', 'name']): ?array
+    public function fetchEntityReference(string $index, ?string $id, array $fields = ['id', 'name']): ?array
     {
+        if (empty($id)) {
+            return null;
+        }
+
         $result = $this->queryBuilder
             ->select($fields)
             ->from($index)
